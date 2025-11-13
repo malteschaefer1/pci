@@ -1,7 +1,9 @@
-import {
-  computeCircularityIndicators,
-} from './circularity.js';
-import {
+const Circularity = (typeof window !== 'undefined' && window.PCICircularity) || {};
+const CsvUtils = (typeof window !== 'undefined' && window.CsvUtils) || {};
+const ChartHelpers = (typeof window !== 'undefined' && window.ChartHelpers) || {};
+
+const { computeCircularityIndicators } = Circularity;
+const {
   generateBomTemplateCsv,
   generateInputFactorsTemplateCsv,
   parseBomCsv,
@@ -9,8 +11,8 @@ import {
   exportComponentsToBomCsv,
   exportComponentsToInputFactorsCsv,
   exportResultsCsv,
-} from './csv-utils.js';
-import { renderCciChart, renderCiiChart } from './charts.js';
+} = CsvUtils;
+const { renderCciChart, renderCiiChart } = ChartHelpers;
 
 const DEBUG_LOG = false;
 
@@ -59,6 +61,20 @@ const exampleComponents = [
   },
 ];
 
+const DEFAULT_STATUS_MESSAGE = 'Ready for input.';
+const NUMERIC_PATTERN = /^[0-9]*\.?[0-9]*$/;
+const TEXT_PATTERN = /^[\w\s\-().,/&+':%]*$/;
+const MANUAL_FACTOR_FIELDS = ['Fr', 'Efp', 'Ecp', 'Cfp', 'Ccp', 'Ems', 'Erfp'];
+const COMPONENT_PERCENT_DEFAULTS = {
+  Fr: 0,
+  Efp: 1,
+  Ecp: 1,
+  Cfp: 0,
+  Ccp: 0,
+  Ems: 0,
+  Erfp: 0,
+};
+
 const state = {
   components: [],
   productParams: {
@@ -76,18 +92,25 @@ const state = {
     cii: null,
   },
   lastComputation: null,
+  manualBomRows: [],
+  manualFactorRows: [],
 };
 
 const elements = {};
 let statusTimeoutId = null;
 
-document.addEventListener('DOMContentLoaded', init);
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
 
 function init() {
   cacheElements();
   bindEvents();
   state.components = cloneComponents(exampleComponents);
   renderComponentTable();
+  hydrateManualTablesFromComponents();
   updateProductParamsFromForm();
   updateComputeButtonState();
   setStatus('Ready. Load CSVs or use the example data to get started.', 'info');
@@ -95,6 +118,7 @@ function init() {
 
 function cacheElements() {
   elements.statusPanel = document.getElementById('status-panel');
+  elements.statusMessage = document.getElementById('status-message');
   elements.productForm = document.getElementById('product-form');
   elements.tabButtons = document.querySelectorAll('.tab-button');
   elements.tabPanels = document.querySelectorAll('.tab-panel');
@@ -113,12 +137,33 @@ function cacheElements() {
   elements.ciiChartCanvas = document.getElementById('cii-chart');
   elements.bomUpload = document.getElementById('bom-upload');
   elements.factorsUpload = document.getElementById('factors-upload');
+  elements.manualBomBody = document.getElementById('manual-bom-body');
+  elements.manualFactorBody = document.getElementById('manual-factor-body');
+  elements.bomAddRowBtn = document.getElementById('bom-add-row');
+  elements.factorsAddRowBtn = document.getElementById('factors-add-row');
+  elements.bomCompleteBtn = document.getElementById('bom-complete');
+  elements.factorsCompleteBtn = document.getElementById('factors-complete');
 }
 
 function bindEvents() {
-  elements.productForm.addEventListener('input', () => {
+  elements.productForm.addEventListener('input', (event) => {
+    if (event.target instanceof HTMLInputElement) {
+      event.target.dataset.dirty = 'true';
+      validateFormField(event.target);
+    }
     updateProductParamsFromForm();
   });
+
+  elements.productForm.addEventListener(
+    'focusout',
+    (event) => {
+      if (event.target instanceof HTMLInputElement) {
+        event.target.dataset.dirty = 'true';
+        validateFormField(event.target);
+      }
+    },
+    true
+  );
 
   elements.tabButtons.forEach((button) => {
     button.addEventListener('click', () => switchTab(button.dataset.tab));
@@ -146,6 +191,7 @@ function bindEvents() {
     state.components = cloneComponents(exampleComponents);
     renderComponentTable();
     updateComputeButtonState();
+    hydrateManualTablesFromComponents();
     switchTab('manual');
     setStatus('Restored the example data set.', 'info');
   });
@@ -154,6 +200,21 @@ function bindEvents() {
   elements.componentsTableBody.addEventListener('click', handleTableClick);
 
   elements.computeBtn.addEventListener('click', handleComputation);
+
+  elements.manualBomBody?.addEventListener('input', handleManualBomInput);
+  elements.manualBomBody?.addEventListener('click', handleManualBomClick);
+  elements.manualFactorBody?.addEventListener('input', handleManualFactorInput);
+  elements.manualFactorBody?.addEventListener('click', handleManualFactorClick);
+  elements.bomAddRowBtn?.addEventListener('click', () => {
+    addManualBomRow();
+    setStatus('Added a BoM row (copied from previous entry).', 'info');
+  });
+  elements.factorsAddRowBtn?.addEventListener('click', () => {
+    addManualFactorRow();
+    setStatus('Added an input-factor row (copied from previous entry).', 'info');
+  });
+  elements.bomCompleteBtn?.addEventListener('click', handleBomComplete);
+  elements.factorsCompleteBtn?.addEventListener('click', handleFactorsComplete);
 }
 
 function switchTab(name) {
@@ -185,6 +246,341 @@ function renderComponentTable() {
     .join('');
   elements.componentsTableBody.innerHTML = rows;
   clearValidationStyles();
+}
+
+function hydrateManualTablesFromComponents() {
+  if (state.components.length) {
+    state.manualBomRows = state.components.map((comp, index) => ({
+      part: comp.id || comp.name || `Component ${index + 1}`,
+      material: comp.material || '',
+      process: comp.process || '',
+      massKg: comp.massKg ?? '',
+    }));
+
+    const factorMap = new Map();
+    state.components.forEach((comp) => {
+      const key = buildFactorKey(comp.material, comp.process);
+      if (!key || factorMap.has(key)) {
+        return;
+      }
+      const row = {
+        material: comp.material || '',
+        process: comp.process || '',
+      };
+      MANUAL_FACTOR_FIELDS.forEach((field) => {
+        row[field] = formatPercentInput(comp[field]);
+      });
+      factorMap.set(key, row);
+    });
+    state.manualFactorRows = factorMap.size ? Array.from(factorMap.values()) : [createDefaultFactorRow()];
+  } else {
+    state.manualBomRows = [createDefaultBomRow()];
+    state.manualFactorRows = [createDefaultFactorRow()];
+  }
+  renderManualTables();
+}
+
+function renderManualTables() {
+  renderManualBomTable();
+  renderManualFactorTable();
+}
+
+function renderManualBomTable() {
+  if (!elements.manualBomBody) {
+    return;
+  }
+  if (!state.manualBomRows.length) {
+    state.manualBomRows = [createDefaultBomRow()];
+  }
+  const rows = state.manualBomRows
+    .map(
+      (row, index) => `
+        <tr data-index="${index}">
+          <td><input type="text" data-field="part" value="${escapeHtml(row.part || '')}" placeholder="e.g., Housing" /></td>
+          <td><input type="text" data-field="material" value="${escapeHtml(row.material || '')}" placeholder="Polyamide" /></td>
+          <td><input type="number" step="0.0001" min="0" data-field="massKg" value="${row.massKg ?? ''}" placeholder="0.000" /></td>
+          <td><input type="text" data-field="process" value="${escapeHtml(row.process || '')}" placeholder="Injection-molding" /></td>
+          <td><button type="button" class="secondary manual-delete" data-action="delete-bom" aria-label="Delete BoM row">✕</button></td>
+        </tr>`
+    )
+    .join('');
+  elements.manualBomBody.innerHTML = rows;
+}
+
+function renderManualFactorTable() {
+  if (!elements.manualFactorBody) {
+    return;
+  }
+  if (!state.manualFactorRows.length) {
+    state.manualFactorRows = [createDefaultFactorRow()];
+  }
+  const rows = state.manualFactorRows
+    .map((row, index) => {
+      const percentInputs = MANUAL_FACTOR_FIELDS.map(
+        (field) =>
+          `<td><input type="number" min="0" max="100" step="0.1" data-field="${field}" value="${row[field] ?? ''}" placeholder="0.0 – 100.0" /></td>`
+      ).join('');
+      return `
+        <tr data-index="${index}">
+          <td><input type="text" data-field="material" value="${escapeHtml(row.material || '')}" placeholder="Polyamide" /></td>
+          <td><input type="text" data-field="process" value="${escapeHtml(row.process || '')}" placeholder="Injection-molding" /></td>
+          ${percentInputs}
+          <td><button type="button" class="secondary manual-delete" data-action="delete-factor" aria-label="Delete factor row">✕</button></td>
+        </tr>`;
+    })
+    .join('');
+  elements.manualFactorBody.innerHTML = rows;
+}
+
+function createDefaultBomRow() {
+  return { part: '', material: '', massKg: '', process: '' };
+}
+
+function createDefaultFactorRow() {
+  const row = { material: '', process: '' };
+  MANUAL_FACTOR_FIELDS.forEach((field) => {
+    row[field] = '';
+  });
+  return row;
+}
+
+function addManualBomRow() {
+  const last = state.manualBomRows[state.manualBomRows.length - 1] || createDefaultBomRow();
+  state.manualBomRows.push({ ...last });
+  renderManualBomTable();
+}
+
+function addManualFactorRow() {
+  const last = state.manualFactorRows[state.manualFactorRows.length - 1] || createDefaultFactorRow();
+  state.manualFactorRows.push({ ...last });
+  renderManualFactorTable();
+}
+
+function handleManualBomInput(event) {
+  const target = event.target;
+  if (!(target instanceof HTMLInputElement)) {
+    return;
+  }
+  const row = target.closest('tr');
+  if (!row) {
+    return;
+  }
+  const index = Number(row.dataset.index);
+  const field = target.dataset.field;
+  if (!field || !state.manualBomRows[index]) {
+    return;
+  }
+  state.manualBomRows[index][field] = target.value;
+}
+
+function handleManualFactorInput(event) {
+  const target = event.target;
+  if (!(target instanceof HTMLInputElement)) {
+    return;
+  }
+  const row = target.closest('tr');
+  if (!row) {
+    return;
+  }
+  const index = Number(row.dataset.index);
+  const field = target.dataset.field;
+  if (!field || !state.manualFactorRows[index]) {
+    return;
+  }
+  state.manualFactorRows[index][field] = target.value;
+}
+
+function handleManualBomClick(event) {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+  if (target.dataset.action === 'delete-bom') {
+    const row = target.closest('tr');
+    if (!row) {
+      return;
+    }
+    const index = Number(row.dataset.index);
+    removeManualRow(state.manualBomRows, index, createDefaultBomRow);
+    renderManualBomTable();
+  }
+}
+
+function handleManualFactorClick(event) {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+  if (target.dataset.action === 'delete-factor') {
+    const row = target.closest('tr');
+    if (!row) {
+      return;
+    }
+    const index = Number(row.dataset.index);
+    removeManualRow(state.manualFactorRows, index, createDefaultFactorRow);
+    renderManualFactorTable();
+  }
+}
+
+function removeManualRow(collection, index, factory) {
+  if (collection.length <= 1) {
+    collection[0] = { ...factory() };
+    return;
+  }
+  collection.splice(index, 1);
+}
+
+function handleBomComplete() {
+  const validation = validateManualBomRows();
+  if (!validation.valid) {
+    setStatus(`Fix BoM rows: ${validation.messages.join(' ')}`, 'error');
+    return;
+  }
+  syncComponentsFromManualTables();
+  setStatus('BoM captured. You can refine parameters below if needed.', 'success');
+}
+
+function handleFactorsComplete() {
+  const validation = validateManualFactorRows();
+  if (!validation.valid) {
+    setStatus(`Fix input-factor rows: ${validation.messages.join(' ')}`, 'error');
+    return;
+  }
+  syncComponentsFromManualTables();
+  setStatus('Input factors captured. Components updated with the latest recycling efficiencies.', 'success');
+}
+
+function validateManualBomRows() {
+  const messages = [];
+  let allValid = true;
+  state.manualBomRows.forEach((row, index) => {
+    let rowValid = true;
+    if (!row.part?.trim()) {
+      rowValid = false;
+      messages.push(`row ${index + 1}: Part ID is required.`);
+    }
+    if (!row.material?.trim()) {
+      rowValid = false;
+      messages.push(`row ${index + 1}: Material is required.`);
+    }
+    if (!row.process?.trim()) {
+      rowValid = false;
+      messages.push(`row ${index + 1}: Process is required.`);
+    }
+    const mass = Number(row.massKg);
+    if (!Number.isFinite(mass) || mass <= 0) {
+      rowValid = false;
+      messages.push(`row ${index + 1}: Mass must be a positive number.`);
+    }
+    markManualRowError(elements.manualBomBody, index, !rowValid);
+    allValid = allValid && rowValid;
+  });
+  return { valid: allValid, messages };
+}
+
+function validateManualFactorRows() {
+  const messages = [];
+  let allValid = true;
+  state.manualFactorRows.forEach((row, index) => {
+    let rowValid = true;
+    if (!row.material?.trim()) {
+      rowValid = false;
+      messages.push(`row ${index + 1}: Material is required.`);
+    }
+    if (!row.process?.trim()) {
+      rowValid = false;
+      messages.push(`row ${index + 1}: Process is required.`);
+    }
+    MANUAL_FACTOR_FIELDS.forEach((field) => {
+      const numericValue = Number(row[field]);
+      if (!Number.isFinite(numericValue) || numericValue < 0 || numericValue > 100) {
+        rowValid = false;
+        messages.push(`row ${index + 1}: ${field} must be between 0 and 100%.`);
+      }
+    });
+    markManualRowError(elements.manualFactorBody, index, !rowValid);
+    allValid = allValid && rowValid;
+  });
+  return { valid: allValid, messages };
+}
+
+function markManualRowError(container, index, hasError) {
+  if (!container) {
+    return;
+  }
+  const row = container.querySelector(`tr[data-index="${index}"]`);
+  if (row) {
+    row.classList.toggle('row-error', hasError);
+  }
+}
+
+function syncComponentsFromManualTables() {
+  if (!state.manualBomRows.length) {
+    setStatus('Add at least one BoM row before syncing.', 'error');
+    return;
+  }
+  const factorLookup = buildFactorLookup();
+  const previous = new Map(state.components.map((comp) => [comp.id, comp]));
+  const components = state.manualBomRows.map((row, index) => {
+    const partId = row.part?.trim() || `C${index + 1}`;
+    const existing = previous.get(partId) || createEmptyComponent();
+    const material = row.material?.trim() || '';
+    const process = row.process?.trim() || '';
+    const factorKey = buildFactorKey(material, process);
+    const factor = factorKey ? factorLookup.get(factorKey) : undefined;
+    const mass = Number(row.massKg);
+    const updated = {
+      ...existing,
+      id: partId,
+      name: partId,
+      material,
+      process,
+      massKg: Number.isFinite(mass) ? mass : 0,
+    };
+    MANUAL_FACTOR_FIELDS.forEach((field) => {
+      const fallback = existing[field] ?? COMPONENT_PERCENT_DEFAULTS[field];
+      updated[field] = factor?.[field] ?? fallback;
+    });
+    return updated;
+  });
+  state.components = components;
+  renderComponentTable();
+  updateComputeButtonState();
+}
+
+function buildFactorLookup() {
+  const lookup = new Map();
+  state.manualFactorRows.forEach((row) => {
+    const key = buildFactorKey(row.material, row.process);
+    if (!key) {
+      return;
+    }
+    const entry = {};
+    MANUAL_FACTOR_FIELDS.forEach((field) => {
+      const value = Number(row[field]);
+      if (Number.isFinite(value)) {
+        entry[field] = clamp01(value / 100);
+      }
+    });
+    lookup.set(key, entry);
+  });
+  return lookup;
+}
+
+function buildFactorKey(material, process) {
+  const mat = material?.trim().toLowerCase();
+  const proc = process?.trim().toLowerCase();
+  if (!mat && !proc) {
+    return null;
+  }
+  return `${mat}|${proc}`;
+}
+
+function formatPercentInput(fraction) {
+  if (!Number.isFinite(fraction)) {
+    return '';
+  }
+  return (fraction * 100).toFixed(1);
 }
 
 function renderComponentRow(component, index) {
@@ -296,6 +692,7 @@ function handleCsvUpload(type, file) {
       }
       renderComponentTable();
       updateComputeButtonState();
+      hydrateManualTablesFromComponents();
       switchTab('manual');
     } catch (error) {
       setStatus(error.message || 'Failed to parse CSV.', 'error');
@@ -357,6 +754,12 @@ function createEmptyComponent() {
 }
 
 function handleComputation() {
+  const productValidation = validateAllProductInputs();
+  if (!productValidation.valid) {
+    setStatus('Fix the highlighted product parameters before computing.', 'error');
+    productValidation.firstInvalid?.focus();
+    return;
+  }
   const validation = validateComponents();
   applyValidationStyles(validation.fieldErrors);
   if (!validation.valid) {
@@ -488,6 +891,13 @@ function toPositiveNumber(value) {
   return num > 0 ? num : 0;
 }
 
+function clamp01(value) {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+  return Math.min(1, Math.max(0, value));
+}
+
 function escapeHtml(value) {
   return value
     ? String(value)
@@ -513,13 +923,92 @@ function setStatus(message, type = 'info') {
   if (!elements.statusPanel) {
     return;
   }
-  elements.statusPanel.textContent = message;
+  if (elements.statusMessage) {
+    elements.statusMessage.textContent = message;
+  } else {
+    elements.statusPanel.textContent = message;
+  }
   elements.statusPanel.className = `status-panel ${type}`;
   if (statusTimeoutId) {
     clearTimeout(statusTimeoutId);
   }
   statusTimeoutId = window.setTimeout(() => {
-    elements.statusPanel.textContent = '';
+    if (elements.statusMessage) {
+      elements.statusMessage.textContent = DEFAULT_STATUS_MESSAGE;
+    } else {
+      elements.statusPanel.textContent = DEFAULT_STATUS_MESSAGE;
+    }
     elements.statusPanel.className = 'status-panel';
   }, 8000);
+}
+
+function validateFormField(input) {
+  const validationType = input.dataset.validate;
+  if (!validationType) {
+    return true;
+  }
+  const rawValue = input.value.trim();
+  if (!rawValue && input.dataset.dirty !== 'true') {
+    setFieldFeedback(input, '');
+    return true;
+  }
+
+  let message = '';
+  if (validationType === 'text') {
+    if (!rawValue) {
+      message = 'Value required.';
+    } else if (!TEXT_PATTERN.test(rawValue)) {
+      message = 'Use letters, numbers, spaces, dashes, and basic punctuation only.';
+    }
+  } else {
+    if (!rawValue) {
+      message = 'Numeric value required.';
+    } else if (!NUMERIC_PATTERN.test(rawValue)) {
+      message = 'Use digits and decimal points only.';
+    } else {
+      const numericValue = Number(rawValue);
+      if (Number.isNaN(numericValue)) {
+        message = 'Enter a valid number.';
+      } else if (validationType === 'percentage') {
+        if (numericValue < 0 || numericValue > 100) {
+          message = 'Enter a percentage between 0 and 100.';
+        }
+      } else if (validationType === 'positive') {
+        if (numericValue <= 0) {
+          message = 'Enter a positive number greater than 0.';
+        }
+      }
+    }
+  }
+
+  setFieldFeedback(input, message);
+  return !message;
+}
+
+function setFieldFeedback(input, message) {
+  const feedback = input.parentElement.querySelector('.field-feedback');
+  if (feedback) {
+    feedback.textContent = message;
+  }
+  input.classList.toggle('input-error', Boolean(message));
+}
+
+function validateAllProductInputs() {
+  if (!elements.productForm) {
+    return { valid: true, firstInvalid: null };
+  }
+  const inputs = Array.from(elements.productForm.querySelectorAll('input'));
+  let firstInvalid = null;
+  let allValid = true;
+  inputs.forEach((input) => {
+    input.dataset.dirty = 'true';
+    const isValid = validateFormField(input);
+    if (!isValid) {
+      allValid = false;
+      if (!firstInvalid) {
+        firstInvalid = input;
+      }
+    }
+  });
+  return { valid: allValid, firstInvalid };
 }

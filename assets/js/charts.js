@@ -1,20 +1,23 @@
-const DEFAULT_OPTIONS = {
-  responsive: true,
-  scales: {
-    x: {
-      ticks: { color: '#4b5b79' },
-      grid: { display: false },
+(() => {
+  const globalScope = typeof window !== 'undefined' ? window : globalThis;
+
+  const DEFAULT_OPTIONS = {
+    responsive: true,
+    scales: {
+      x: {
+        ticks: { color: '#4b5b79' },
+        grid: { display: false },
+      },
+      y: {
+        beginAtZero: true,
+        ticks: { color: '#4b5b79' },
+        grid: { color: '#eef2ff' },
+      },
     },
-    y: {
-      beginAtZero: true,
-      ticks: { color: '#4b5b79' },
-      grid: { color: '#eef2ff' },
+    plugins: {
+      legend: { display: false },
     },
-  },
-  plugins: {
-    legend: { display: false },
-  },
-};
+  };
 
 /**
  * Renders the CCI bar chart.
@@ -23,7 +26,7 @@ const DEFAULT_OPTIONS = {
  * @param {Chart|null} existingChart
  * @returns {Chart|null}
  */
-export function renderCciChart(canvas, components, existingChart = null) {
+  function renderCciChart(canvas, components, existingChart = null) {
   return renderBarChart(canvas, components, existingChart, {
     label: 'CCI (0–1)',
     backgroundColor: '#4f46e5',
@@ -39,7 +42,7 @@ export function renderCciChart(canvas, components, existingChart = null) {
  * @param {Chart|null} existingChart
  * @returns {Chart|null}
  */
-export function renderCiiChart(canvas, components, existingChart = null) {
+  function renderCiiChart(canvas, components, existingChart = null) {
   return renderBarChart(canvas, components, existingChart, {
     label: 'CII (%)',
     backgroundColor: '#10b981',
@@ -48,7 +51,7 @@ export function renderCiiChart(canvas, components, existingChart = null) {
   });
 }
 
-function renderBarChart(canvas, components, existingChart, config) {
+  function renderBarChart(canvas, components, existingChart, config) {
   if (!canvas) {
     return null;
   }
@@ -86,4 +89,10 @@ function renderBarChart(canvas, components, existingChart, config) {
       },
     },
   });
-}
+  }
+
+  globalScope.ChartHelpers = {
+    renderCciChart,
+    renderCiiChart,
+  };
+})();

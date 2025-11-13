@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PCI Circularity Calculator – README</title>
+    <link rel="stylesheet" href="assets/css/styles.css" />
+    <style>
+      body {
+        background: #f6f7fb;
+      }
+      main {
+        max-width: 900px;
+        margin: 2rem auto;
+      }
+      article {
+        background: #fff;
+        padding: 2rem;
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(15, 23, 42, 0.05);
+      }
+      pre {
+        padding: 1rem;
+        background: #0f172a;
+        color: #f8fafc;
+        border-radius: 10px;
+        overflow-x: auto;
+      }
+      code {
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+        background: rgba(15, 23, 42, 0.08);
+        padding: 0 0.25rem;
+        border-radius: 4px;
+      }
+      pre code {
+        background: transparent;
+        padding: 0;
+      }
+      a {
+        color: #3c7dff;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="page-header">
+      <div>
+        <p class="eyebrow">Documentation</p>
+        <h1>PCI Circularity Calculator – README</h1>
+        <p>This page renders the Markdown documentation with full formatting for comfortable reading.</p>
+        <div class="link-row">
+          <a href="index.html">Back to the tool</a>
+          <span aria-hidden="true">•</span>
+          <a href="README.md" download>Download raw README.md</a>
+        </div>
+      </div>
+    </header>
+    <main>
+      <article>
+        <h1>PCI Circularity Calculator – Browser-based Tool</h1>
+        <p>
+          This repository contains a pure HTML/CSS/JavaScript tool that replicates the Product Circularity Indicator (PCI), Component
+          Circularity Indicator (CCI), and Circularity Impact Indicator (CII) calculations from <strong>PCI_paper_V2.pdf</strong>
+          (Sections 3–4 and Appendix A). Open <code>index.html</code> in any modern browser to load the interface, enter or import Bill of
+          Materials (BoM) data, and calculate the indicators alongside simple charts.
+        </p>
+        <h2 id="background">Background</h2>
+        <p>
+          The workflow is adapted from Müller et al., <em>Assessing Product Circularity and Carbon Footprint: Electromagnetic Guard
+          Locking System Case Study</em> (PCI_paper_V2.pdf). The tool follows:
+        </p>
+        <ul>
+          <li>Section 3: six-step integrated procedure for PCI + PCF assessments (v1 focuses on PCI/CCI/CII only).</li>
+          <li>Section 4: case-study structure for handling components and hotspots.</li>
+          <li>Appendix A: Equations 3–23 for PCI, CCI, CII, LFI, and all intermediate mass flows.</li>
+        </ul>
+        <p>All variable names in the UI map directly to the notation from Appendix A (e.g., <code>Fu</code>, <code>Fr</code>, <code>Efp</code>, <code>Ecp</code>).</p>
+        <h2 id="features">Features</h2>
+        <ul>
+          <li>🔌 <strong>Zero-install</strong>: double-click <code>index.html</code>; no build tools or servers.</li>
+          <li>📥 <strong>CSV templates</strong> for BoM and circularity parameters plus CSV export of working data and results.</li>
+          <li>🧮 <strong>Built-in data grid</strong> for manual entry with validation and sample components.</li>
+          <li>📊 <strong>Chart.js visualizations</strong> for CCI and CII per component.</li>
+          <li>🧠 <strong>Defensive math layer</strong> (<code>assets/js/circularity.js</code>) that implements Equations 3–23 with extensive JSDoc comments.</li>
+          <li>⚠️ <strong>Friendly status messages</strong> and per-cell highlighting for invalid data.</li>
+        </ul>
+        <h2 id="quick-start">Quick start</h2>
+        <ol>
+          <li>Clone or download this repository.</li>
+          <li>Open <code>index.html</code> in a modern browser (Chrome, Edge, Firefox, Safari desktop or tablet).</li>
+          <li>Use the example data or import your own CSVs.</li>
+          <li>Click <strong>Compute circularity indicators</strong> to obtain PCI/CCI/CII and the charts.</li>
+          <li>Export BoM, factors, or results as CSV for documentation.</li>
+        </ol>
+        <p>The interface is fully client-side, so no data leaves your machine.</p>
+        <h2 id="workflow">Workflow walkthrough</h2>
+        <ol>
+          <li><strong>Step 1 – Product parameters:</strong> enter <code>Fu</code>, <code>Cu</code>, <code>Cr</code>, and the lifetime/use intensity pairs (<code>L</code>, <code>Ld</code>, <code>I</code>, <code>Id</code>).</li>
+          <li><strong>Step 2 – BoM &amp; input factors:</strong> download templates or edit the manual table. Columns map to Section 3.2.</li>
+          <li><strong>Step 3 – Calculation:</strong> validates inputs and runs Appendix A equations, surfacing warnings for each component.</li>
+          <li><strong>Step 4 – Visualizations:</strong> shows bar charts (CCI and CII) using Chart.js.</li>
+          <li><strong>Step 5 – Export:</strong> download BoM, factor table, or results with flows, LFI, CCI, and CII.</li>
+        </ol>
+        <h2 id="csv">CSV formats</h2>
+        <h3>BoM template</h3>
+        <pre><code>component_id,component_name,material,process,mass_kg
+C1,Housing,Polyamide,Injection-molding,0.16
+</code></pre>
+        <h3>Input-factor template</h3>
+        <pre><code>component_id,Fr_percent,Efp_percent,Ecp_percent,Cfp_percent,Ccp_percent,Ems_percent,Erfp_percent
+C1,0,100,95,0,100,30,30
+</code></pre>
+        <p>Percent inputs are provided as 0–100 in the CSV, matching the UI. They are converted to fractions internally.</p>
+        <h2 id="calculation">Calculation details</h2>
+        <ul>
+          <li>
+            <strong>PCI (Eq. 3 &amp; 5):</strong> mass-weighted average of component CCIs plus the use-factor adjustment <code>PCI = 1 - (LFI / X)</code>. Negative values
+            clamp to 0.
+          </li>
+          <li><strong>CCI (Eq. 6):</strong> per-component version of PCI.</li>
+          <li>
+            <strong>CII (Eq. 4):</strong> <code>CII_i = 100 * (PCI / CCI_i) / Σ_j (PCI / CCI_j)</code>; extremely small CCIs trigger warnings to avoid divide-by-zero.
+          </li>
+          <li>
+            <strong>LFI (Eq. 7):</strong> implemented with helpers for virgin feedstock, waste masses, recycling flows, reused component mass, and linear reference
+            flows (Eq. 9–23).
+          </li>
+        </ul>
+        <p>Set <code>DEBUG_LOG</code> in <code>assets/js/app.js</code> to <code>true</code> to inspect intermediate flows in the console.</p>
+        <h2 id="limitations">Limitations &amp; scope</h2>
+        <ul>
+          <li>v1 focuses solely on PCI/CCI/CII. Hooks for PCF/LCA integration are not implemented yet.</li>
+          <li>The UI assumes positive masses and efficiency values within [0, 1].</li>
+          <li>CSV parsing relies on Papa Parse when available; a fallback handles basic comma-separated files.</li>
+          <li>Charts and downloads run client-side; very large BoMs may feel slower on low-power devices.</li>
+        </ul>
+        <h2 id="development">Development notes</h2>
+        <ul>
+          <li><strong>Structure:</strong> `index.html`, `assets/css/styles.css`, `assets/js/app.js`, `assets/js/circularity.js`, `assets/js/csv-utils.js`, `assets/js/charts.js`.</li>
+          <li><strong>Extending the UI:</strong> add sections in `index.html`, style via CSS, and wire events in `app.js`.</li>
+          <li><strong>Adding metrics:</strong> expand `circularity.js` with new pure functions and import them into `app.js`.</li>
+          <li><strong>Debugging:</strong> toggle `DEBUG_LOG` or inspect the `debug` object returned by `computeCircularityIndicators`.</li>
+        </ul>
+        <h2 id="license">License</h2>
+        <p>The project is released under the MIT License (see <code>LICENSE</code>). Methodology credit remains with PCI_paper_V2.pdf.</p>
+      </article>
+    </main>
+  </body>
+</html>

@@ -82,12 +82,23 @@ main {
 }
 
 .status-panel {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   min-height: 32px;
   padding: 0.5rem 1rem;
   border-radius: 12px;
   background: var(--card-bg);
   border: 1px solid transparent;
   font-size: 0.95rem;
+}
+
+.status-panel__title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
 }
 
 .status-panel.info {
@@ -114,6 +125,68 @@ main {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
+.manual-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.manual-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background: #fefefe;
+}
+
+.manual-card__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.manual-card__header h3 {
+  margin: 0;
+}
+
+.manual-card__header p {
+  margin: 0.25rem 0 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.manual-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.manual-editor {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem;
+  background: #fff;
+}
+
+.manual-editor__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.manual-editor__header h3 {
+  margin: 0;
+}
+
+.manual-editor__header p {
+  margin: 0.25rem 0 0;
+}
+
 .chart-grid {
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 2rem;
@@ -125,6 +198,34 @@ label {
   font-weight: 600;
   gap: 0.35rem;
   font-size: 0.95rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  height: 100%;
+  gap: 0.25rem;
+  padding: 0.25rem 0;
+}
+
+.field-title {
+  font-weight: 600;
+}
+
+.field-summary {
+  font-size: 0.85rem;
+  color: var(--muted);
+  min-height: 2.3em;
+  line-height: 1.3;
+  flex-grow: 1;
+  display: block;
+}
+
+.field-feedback {
+  font-size: 0.8rem;
+  color: var(--warning);
+  min-height: 1rem;
 }
 
 input[type="text"],
@@ -144,6 +245,35 @@ select {
   margin: 0.25rem 0 0;
 }
 
+.parameter-glossary {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #f9fbff;
+}
+
+.parameter-glossary h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.parameter-glossary ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+  margin: 0;
+  color: var(--muted);
+}
+
+.parameter-glossary li {
+  margin-bottom: 0.35rem;
+  line-height: 1.4;
+}
+
+.parameter-glossary li strong {
+  color: var(--text);
+}
+
 button {
   border: none;
   border-radius: 8px;
@@ -154,6 +284,15 @@ button {
   color: #fff;
   font-weight: 600;
   transition: background 0.2s ease;
+}
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(60, 125, 255, 0.1);
+  color: var(--accent);
+  border: 1px solid rgba(60, 125, 255, 0.25);
 }
 
 button.secondary {
@@ -199,10 +338,19 @@ button:disabled {
   margin-top: 1rem;
 }
 
+.table-wrapper.compact {
+  margin-top: 0.5rem;
+}
+
 .table-wrapper table {
   width: 100%;
   border-collapse: collapse;
   min-width: 600px;
+}
+
+
+.manual-card .table-wrapper table {
+  min-width: 720px;
 }
 
 .table-wrapper thead {
@@ -218,6 +366,11 @@ table td {
   padding: 0.65rem;
   text-align: left;
   font-size: 0.9rem;
+}
+
+.manual-card table th,
+.manual-card table td {
+  font-size: 0.85rem;
 }
 
 table tbody tr:nth-child(even) {

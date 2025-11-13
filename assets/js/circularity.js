@@ -1,24 +1,27 @@
-/**
- * Represents one BoM line plus circularity parameters.
- * Percentages are stored as fractions between 0 and 1.
- * @typedef {Object} ComponentInput
- * @property {string} id
- * @property {string} name
- * @property {string} material
- * @property {string} process
- * @property {number} massKg
- * @property {number} Fr
- * @property {number} Efp
- * @property {number} Ecp
- * @property {number} Cfp
- * @property {number} Ccp
- * @property {number} Ems
- * @property {number} Erfp
- * @property {number|null} [LFI]
- * @property {number|null} [CCI]
- * @property {number|null} [CII]
- * @property {string[]} [warnings]
- */
+(() => {
+  const globalScope = typeof window !== 'undefined' ? window : globalThis;
+
+  /**
+   * Represents one BoM line plus circularity parameters.
+   * Percentages are stored as fractions between 0 and 1.
+   * @typedef {Object} ComponentInput
+   * @property {string} id
+   * @property {string} name
+   * @property {string} material
+   * @property {string} process
+   * @property {number} massKg
+   * @property {number} Fr
+   * @property {number} Efp
+   * @property {number} Ecp
+   * @property {number} Cfp
+   * @property {number} Ccp
+   * @property {number} Ems
+   * @property {number} Erfp
+   * @property {number|null} [LFI]
+   * @property {number|null} [CCI]
+   * @property {number|null} [CII]
+   * @property {string[]} [warnings]
+   */
 
 /**
  * Product-level parameters shared by all components.
@@ -33,7 +36,7 @@
  * @property {number} I
  */
 
-const EPSILON = 1e-9;
+  const EPSILON = 1e-9;
 
 /**
  * Computes PCI, CCI and CII for all components.
@@ -41,7 +44,7 @@ const EPSILON = 1e-9;
  * @param {ProductParams} productParams
  * @returns {{ components: ComponentInput[], PCI: number, X: number, M_total: number, debug: Record<string, any> }}
  */
-export function computeCircularityIndicators(components, productParams) {
+function computeCircularityIndicators(components, productParams) {
   if (!Array.isArray(components) || components.length === 0) {
     throw new Error('At least one component is required to compute circularity indicators.');
   }
@@ -78,7 +81,7 @@ export function computeCircularityIndicators(components, productParams) {
  * @param {ProductParams} productParams
  * @returns {number}
  */
-export function computeUseFactorX(productParams) {
+function computeUseFactorX(productParams) {
   const { I, L, Id, Ld } = productParams;
   if ([I, L, Id, Ld].some((value) => value === undefined)) {
     throw new Error('Missing lifetime or intensity input needed for Eq. 8.');
@@ -95,7 +98,7 @@ export function computeUseFactorX(productParams) {
  * @param {ComponentInput[]} components
  * @returns {number}
  */
-export function computePCI(components) {
+function computePCI(components) {
   const totalMass = components.reduce((sum, comp) => sum + comp.massKg, 0);
   if (totalMass <= 0) {
     return 0;
@@ -110,7 +113,7 @@ export function computePCI(components) {
  * @param {number} PCI
  * @returns {ComponentInput[]}
  */
-export function computeCIIForComponents(components, PCI) {
+function computeCIIForComponents(components, PCI) {
   const safePCI = clamp01(PCI);
   if (safePCI <= EPSILON) {
     return components.map((component) => ({
@@ -198,7 +201,7 @@ function deriveMassFlows(M, component, productParams) {
   };
 }
 
-function computeVirginFeedstockMass(M, Fu, Ecp, Efp, Fr) {
+  function computeVirginFeedstockMass(M, Fu, Ecp, Efp, Fr) {
   const denominator = Ecp * Efp;
   if (denominator <= 0) {
     throw new Error('Ecp and Efp must be positive to compute Eq. 9.');
@@ -208,7 +211,7 @@ function computeVirginFeedstockMass(M, Fu, Ecp, Efp, Fr) {
   return (reusedShare * M / denominator) * recycledShare;
 }
 
-function computeWasteMass(M, params) {
+  function computeWasteMass(M, params) {
   const { Fu, Efp, Ecp, Cfp, Ccp, Cu, Cr, Ems, Erfp } = params;
   const reusedShare = 1 - clamp01(Fu);
   const baseFeedstock = reusedShare * M;
@@ -234,7 +237,7 @@ function computeWasteMass(M, params) {
   };
 }
 
-function computeRecyclingFlows(M, params) {
+  function computeRecyclingFlows(M, params) {
   const { Fu, Efp, Ecp, Cfp, Ccp, Cr, Ems, Erfp } = params;
   const reusedShare = 1 - clamp01(Fu);
   const denom = Efp * Ecp;
@@ -257,11 +260,11 @@ function computeRecyclingFlows(M, params) {
   };
 }
 
-function computeReusedComponentMass(M, Fu, Cu) {
+  function computeReusedComponentMass(M, Fu, Cu) {
   return M * (clamp01(Fu) - clamp01(Cu));
 }
 
-function computeLinearMassFlows(M, Ecp, Efp) {
+  function computeLinearMassFlows(M, Ecp, Efp) {
   const denominator = Ecp * Efp;
   if (denominator <= 0) {
     throw new Error('Ecp and Efp must be positive to compute linear reference flows.');
@@ -270,7 +273,7 @@ function computeLinearMassFlows(M, Ecp, Efp) {
   return { V: linearValue, W: linearValue };
 }
 
-function sanitizeComponent(component) {
+  function sanitizeComponent(component) {
   const mass = Number(component.massKg);
   if (!isFinite(mass) || mass <= 0) {
     throw new Error(`Component ${component.id || ''} must have a positive mass in kg.`);
@@ -283,30 +286,38 @@ function sanitizeComponent(component) {
   return clone;
 }
 
-function clamp01(value) {
+  function clamp01(value) {
   if (!isFinite(value)) {
     return 0;
   }
   return Math.min(1, Math.max(0, value));
 }
 
-function clampPercentage(value) {
+  function clampPercentage(value) {
   if (!isFinite(value)) {
     return 0;
   }
   return Math.min(100, Math.max(0, value));
 }
 
-function buildDebugSnapshot(components) {
-  return components.map((comp) => ({
-    id: comp.id,
-    V: comp.flows?.V ?? null,
-    W: comp.flows?.W ?? null,
-    Rin: comp.flows?.Rin ?? null,
-    Rout: comp.flows?.Rout ?? null,
-    absR: comp.flows?.absR ?? null,
-    C: comp.flows?.C ?? null,
-    LFI: comp.LFI ?? null,
-    CCI: comp.CCI ?? null,
-  }));
-}
+  function buildDebugSnapshot(components) {
+    return components.map((comp) => ({
+      id: comp.id,
+      V: comp.flows?.V ?? null,
+      W: comp.flows?.W ?? null,
+      Rin: comp.flows?.Rin ?? null,
+      Rout: comp.flows?.Rout ?? null,
+      absR: comp.flows?.absR ?? null,
+      C: comp.flows?.C ?? null,
+      LFI: comp.LFI ?? null,
+      CCI: comp.CCI ?? null,
+    }));
+  }
+
+  globalScope.PCICircularity = {
+    computeCircularityIndicators,
+    computeUseFactorX,
+    computePCI,
+    computeCIIForComponents,
+  };
+})();

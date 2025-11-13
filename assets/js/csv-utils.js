@@ -1,30 +1,33 @@
-const BOM_COLUMNS = ['component_id', 'component_name', 'material', 'process', 'mass_kg'];
-const FACTOR_COLUMNS = [
-  'component_id',
-  'Fr_percent',
-  'Efp_percent',
-  'Ecp_percent',
-  'Cfp_percent',
-  'Ccp_percent',
-  'Ems_percent',
-  'Erfp_percent',
-];
+(() => {
+  const globalScope = typeof window !== 'undefined' ? window : globalThis;
 
-const DEFAULT_COMPONENT_PARAMS = {
-  Fr: 0,
-  Efp: 1,
-  Ecp: 1,
-  Cfp: 0,
-  Ccp: 0,
-  Ems: 0,
-  Erfp: 0,
-};
+  const BOM_COLUMNS = ['component_id', 'component_name', 'material', 'process', 'mass_kg'];
+  const FACTOR_COLUMNS = [
+    'component_id',
+    'Fr_percent',
+    'Efp_percent',
+    'Ecp_percent',
+    'Cfp_percent',
+    'Ccp_percent',
+    'Ems_percent',
+    'Erfp_percent',
+  ];
+
+  const DEFAULT_COMPONENT_PARAMS = {
+    Fr: 0,
+    Efp: 1,
+    Ecp: 1,
+    Cfp: 0,
+    Ccp: 0,
+    Ems: 0,
+    Erfp: 0,
+  };
 
 /**
  * Generates the BoM template CSV as a string.
  * @returns {string}
  */
-export function generateBomTemplateCsv() {
+  function generateBomTemplateCsv() {
   const header = BOM_COLUMNS.join(',');
   const example = ['C1', 'Housing', 'Polyamide', 'Injection-molding', '0.16'].join(',');
   return `${header}\n${example}\n`;
@@ -34,7 +37,7 @@ export function generateBomTemplateCsv() {
  * Generates the input-factor template CSV as a string.
  * @returns {string}
  */
-export function generateInputFactorsTemplateCsv() {
+  function generateInputFactorsTemplateCsv() {
   const header = FACTOR_COLUMNS.join(',');
   const example = ['C1', '0', '100', '95', '0', '100', '30', '30'].join(',');
   return `${header}\n${example}\n`;
@@ -45,7 +48,7 @@ export function generateInputFactorsTemplateCsv() {
  * @param {string} csvString
  * @returns {import('./circularity.js').ComponentInput[]}
  */
-export function parseBomCsv(csvString) {
+  function parseBomCsv(csvString) {
   const rows = parseCsv(csvString, BOM_COLUMNS);
   return rows.map((row, index) => {
     const id = (row.component_id || '').trim();
@@ -72,7 +75,7 @@ export function parseBomCsv(csvString) {
  * @param {string} csvString
  * @returns {Map<string, Partial<import('./circularity.js').ComponentInput>>}
  */
-export function parseInputFactorsCsv(csvString) {
+  function parseInputFactorsCsv(csvString) {
   const rows = parseCsv(csvString, FACTOR_COLUMNS);
   const map = new Map();
   rows.forEach((row, index) => {
@@ -98,7 +101,7 @@ export function parseInputFactorsCsv(csvString) {
  * @param {import('./circularity.js').ComponentInput[]} components
  * @returns {string}
  */
-export function exportComponentsToBomCsv(components) {
+  function exportComponentsToBomCsv(components) {
   const header = BOM_COLUMNS.join(',');
   const body = components
     .map((comp) =>
@@ -113,7 +116,7 @@ export function exportComponentsToBomCsv(components) {
  * @param {import('./circularity.js').ComponentInput[]} components
  * @returns {string}
  */
-export function exportComponentsToInputFactorsCsv(components) {
+  function exportComponentsToInputFactorsCsv(components) {
   const header = FACTOR_COLUMNS.join(',');
   const body = components
     .map((comp) =>
@@ -137,7 +140,7 @@ export function exportComponentsToInputFactorsCsv(components) {
  * @param {import('./circularity.js').ComponentInput[]} components
  * @returns {string}
  */
-export function exportResultsCsv(components) {
+  function exportResultsCsv(components) {
   const header = [
     'component_id',
     'component_name',
@@ -173,7 +176,7 @@ export function exportResultsCsv(components) {
   return `${header}\n${body}\n`;
 }
 
-function parseCsv(csvString, expectedColumns) {
+  function parseCsv(csvString, expectedColumns) {
   const trimmed = csvString?.trim();
   if (!trimmed) {
     throw new Error('CSV appears to be empty.');
@@ -207,14 +210,14 @@ function parseCsv(csvString, expectedColumns) {
     });
 }
 
-function ensureColumns(actual, expected) {
+  function ensureColumns(actual, expected) {
   const missing = expected.filter((col) => !actual.includes(col));
   if (missing.length) {
     throw new Error(`CSV is missing required columns: ${missing.join(', ')}`);
   }
 }
 
-function parseRequiredNumber(value, field, rowNumber) {
+  function parseRequiredNumber(value, field, rowNumber) {
   const num = Number(value);
   if (!isFinite(num)) {
     throw new Error(`Row ${rowNumber}: ${field} must be a number.`);
@@ -222,25 +225,36 @@ function parseRequiredNumber(value, field, rowNumber) {
   return num;
 }
 
-function parsePercent(value, field, rowNumber) {
+  function parsePercent(value, field, rowNumber) {
   const num = parseRequiredNumber(value, field, rowNumber);
   return clamp01(num / 100);
 }
 
-function clamp01(value) {
+  function clamp01(value) {
   if (!isFinite(value)) {
     return 0;
   }
   return Math.min(1, Math.max(0, value));
 }
 
-function formatNumber(value, digits = 3) {
+  function formatNumber(value, digits = 3) {
   if (value === undefined || value === null || Number.isNaN(value)) {
     return '';
   }
   return Number(value).toFixed(digits);
 }
 
-function formatPercent(fraction) {
+  function formatPercent(fraction) {
   return (clamp01(fraction) * 100).toFixed(1);
 }
+
+  globalScope.CsvUtils = {
+    generateBomTemplateCsv,
+    generateInputFactorsTemplateCsv,
+    parseBomCsv,
+    parseInputFactorsCsv,
+    exportComponentsToBomCsv,
+    exportComponentsToInputFactorsCsv,
+    exportResultsCsv,
+  };
+})();

@@ -7,7 +7,10 @@
     <link rel="stylesheet" href="assets/css/styles.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js" defer></script>
-    <script type="module" src="assets/js/app.js" defer></script>
+    <script src="assets/js/circularity.js" defer></script>
+    <script src="assets/js/csv-utils.js" defer></script>
+    <script src="assets/js/charts.js" defer></script>
+    <script src="assets/js/app.js" defer></script>
   </head>
   <body>
     <noscript>
@@ -17,16 +20,16 @@
     </noscript>
     <header class="page-header">
       <div>
-        <p class="eyebrow">Product Circularity &amp; CII assistant</p>
+        <p class="eyebrow">Product Circularity assistant</p>
         <h1>PCI Circularity Calculator</h1>
-        <p>
+        <summary>
           Estimate Product Circularity Indicator (PCI), Component Circularity Indicator (CCI), and Circularity Impact Indicator (CII)
           directly in your browser. Upload CSV files or edit data inline, then visualize the results per Appendix A of the PCI paper.
-        </p>
+        </summary>
         <div class="link-row">
           <a href="PCI_paper_V2.pdf" target="_blank" rel="noopener">Open PCI methodology (PDF)</a>
           <span aria-hidden="true">•</span>
-          <a href="README.md" target="_blank" rel="noopener">Project README</a>
+          <a href="README.html" target="_blank" rel="noopener">Project README</a>
         </div>
       </div>
     </header>
@@ -35,18 +38,27 @@
       <section id="intro" class="card">
         <h2>How it works</h2>
         <p>
-          Follow the numbered steps below: set product-level parameters, load or enter component data, compute indicators, review the
-          charts, and export your results. All logic follows Sections 3–4 and Appendix A of the accompanying paper.
+          Follow the numbered steps below: set product-level parameters (<a href="#product-params">Step 1</a>), load or enter component
+          data (<a href="#data-entry">Step 2</a>), compute indicators (<a href="#calculation">Step 3</a>), review charts
+          (<a href="#visualizations">Step 4</a>), and export your results (<a href="#export">Step 5</a>). All logic follows Sections 3–4
+          and Appendix A of the accompanying paper.
         </p>
         <ul>
-          <li>Pure client-side app – simply open <code>index.html</code>.</li>
-          <li>Percent inputs are entered as 0–100 in the UI and converted to 0–1 internally.</li>
-          <li>Bring your own CSVs or use the templates provided here.</li>
-          <li>Visual outputs powered by Chart.js; CSV parsing handled by Papa Parse.</li>
+          <li>Pure client-side app – simply open <code>index.html</code> (this page).</li>
+          <li>
+            Upload your own CSVs or use the templates provided here (<a href="#data-entry">Step 2</a>).
+          </li>
+          <li>
+            Visual outputs powered by Chart.js; CSV parsing handled by
+            <a href="https://www.papaparse.com" target="_blank" rel="noopener">Papa Parse</a>.
+          </li>
         </ul>
       </section>
 
-      <section id="status-panel" class="status-panel" aria-live="polite"></section>
+      <section id="status-panel" class="status-panel" aria-live="polite">
+        <span class="status-panel__title">Status</span>
+        <span id="status-message">Ready for input.</span>
+      </section>
 
       <section id="product-params" class="card">
         <div class="section-header">
@@ -54,40 +66,205 @@
           <p>Provide high-level parameters that apply to every component of this product.</p>
         </div>
         <form id="product-form" class="grid two-col">
-          <label>
-            Product name
-            <input type="text" name="productName" placeholder="e.g., Guard Lock Switch" />
+          <label
+            class="field"
+            title="Section 3.1 of the PCI paper describes naming the assessed product so stakeholders can reference it consistently."
+          >
+            <span
+              class="field-title"
+              title="Give the assessed product a recognizable name – Section 3.1 calls this the product under study."
+              >Product name</span
+            >
+            <span
+              class="field-summary"
+              title="Use the internal product label or scenario description so the result tables and exports stay readable."
+              >Short label shown in summary cards, tables, and CSV exports.</span
+            >
+            <input
+              type="text"
+              name="productName"
+              placeholder="e.g., Guard Lock Switch"
+              data-validate="text"
+              title="Letters, numbers, spaces, parentheses, and hyphens are accepted. Avoid quotes or emoji."
+            />
+            <span class="field-feedback" aria-live="polite"></span>
           </label>
-          <label>
-            Share of reused components (Fu, %)
-            <input type="number" name="Fu" min="0" max="100" step="0.1" value="0" />
+
+          <label
+            class="field"
+            title="Fu (Section 3.2 / Appendix A) captures how many components are reused when assembling the current product. Source: refurbishment or remanufacturing records."
+          >
+            <span
+              class="field-title"
+              title="Pull Fu from refurbishment or remanufacturing data per Section 3.2."
+              >F<sub>u</sub> – Reused component share</span
+            >
+            <span
+              class="field-summary"
+              title="Use procurement or service data to estimate how many components are reused directly."
+              >Percent of components that enter the BoM as reused items.</span
+            >
+            <input
+              type="number"
+              name="Fu"
+              min="0"
+              max="100"
+              step="0.1"
+              value="0"
+              placeholder="0.0 – 100.0"
+              data-validate="percentage"
+              title="Enter a percentage between 0 and 100. Use digits and decimal points only."
+            />
+            <span class="field-feedback" aria-live="polite"></span>
           </label>
-          <label>
-            Reusable share at end-of-life (Cu, %)
-            <input type="number" name="Cu" min="0" max="100" step="0.1" value="60" />
+
+          <label
+            class="field"
+            title="Cu (Section 3.2 / Appendix A) is the reusable share after end-of-life collection. Source: reverse-logistics studies or assumptions."
+          >
+            <span class="field-title" title="Cu from Section 3.2 describes how much can be reused after collection."
+              >C<sub>u</sub> – Reusable share at end-of-life</span
+            >
+            <span
+              class="field-summary"
+              title="Use collection trials, eco-design studies, or literature to estimate the reusable mass share."
+              >Percent of the collected product that can be reused without reprocessing.</span
+            >
+            <input
+              type="number"
+              name="Cu"
+              min="0"
+              max="100"
+              step="0.1"
+              value="60"
+              placeholder="0.0 – 100.0"
+              data-validate="percentage"
+              title="Enter a percentage between 0 and 100. Use digits and decimal points only."
+            />
+            <span class="field-feedback" aria-live="polite"></span>
           </label>
-          <label>
-            Recyclable share at end-of-life (Cr, %)
-            <input type="number" name="Cr" min="0" max="100" step="0.1" value="56" />
+
+          <label
+            class="field"
+            title="Cr (Section 3.2 / Appendix A) is the recyclable share after end-of-life processing. Source: recycling partner data, literature, or regulatory targets."
+          >
+            <span class="field-title" title="Cr quantifies the share that actually gets recycled per Section 3.2."
+              >C<sub>r</sub> – Recyclable share at end-of-life</span
+            >
+            <span
+              class="field-summary"
+              title="Estimate using waste-management provider data or regional take-back statistics."
+              >Percent of the collected product that proceeds to material recycling.</span
+            >
+            <input
+              type="number"
+              name="Cr"
+              min="0"
+              max="100"
+              step="0.1"
+              value="56"
+              placeholder="0.0 – 100.0"
+              data-validate="percentage"
+              title="Enter a percentage between 0 and 100. Use digits and decimal points only."
+            />
+            <span class="field-feedback" aria-live="polite"></span>
           </label>
-          <label>
-            Expected lifetime Ld (same unit as L)
-            <input type="number" name="Ld" min="0.01" step="0.01" value="1" />
+
+          <label
+            class="field"
+            title="Ld (Section 3.2 / Appendix A) is the expected lifetime or duty cycles taken from standards or design requirements."
+          >
+            <span class="field-title" title="Ld is the baseline lifetime from standards or specs.">L<sub>d</sub> – Expected lifetime</span>
+            <span
+              class="field-summary"
+              title="Use industry standards or design requirements for the baseline lifetime."
+              >Reference service life (years, months etc.) used in the use-factor denominator.</span
+            >
+            <input
+              type="number"
+              name="Ld"
+              min="0.01"
+              step="0.01"
+              value="1"
+              placeholder="e.g., 1.0"
+              data-validate="positive"
+              title="Enter a positive number using digits and decimal points (same unit as L)."
+            />
+            <span class="field-feedback" aria-live="polite"></span>
           </label>
-          <label>
-            Actual lifetime L
-            <input type="number" name="L" min="0.01" step="0.01" value="1" />
+
+          <label
+            class="field"
+            title="L (Section 3.2 / Appendix A) is the actual or scenario-specific lifetime observed for the product."
+          >
+            <span class="field-title" title="L is the realized service life for the assessed product.">L – Actual lifetime</span>
+            <span
+              class="field-summary"
+              title="Use measured field data, warranty information, or the scenario definition."
+              >Observed lifetime in the same unit as L<sub>d</sub>.</span
+            >
+            <input
+              type="number"
+              name="L"
+              min="0.01"
+              step="0.01"
+              value="1"
+              placeholder="e.g., 1.0"
+              data-validate="positive"
+              title="Enter a positive number using digits and decimal points (same unit as Ld)."
+            />
+            <span class="field-feedback" aria-live="polite"></span>
           </label>
-          <label>
-            Expected use intensity Id
-            <input type="number" name="Id" min="0.01" step="0.01" value="1" />
+
+          <label
+            class="field"
+            title="Id (Section 3.2 / Appendix A) is the expected use intensity, such as duty cycles per year, taken from specifications."
+          >
+            <span class="field-title" title="Id is the baseline use intensity from specifications.">I<sub>d</sub> – Expected use intensity</span>
+            <span
+              class="field-summary"
+              title="Reference how often the product is expected to be used per functional unit."
+              >Baseline usage rate (cycles, hours, etc.) for the denominator.</span
+            >
+            <input
+              type="number"
+              name="Id"
+              min="0.01"
+              step="0.01"
+              value="1"
+              placeholder="e.g., 1.0"
+              data-validate="positive"
+              title="Enter a positive number using digits and decimal points (same unit as I)."
+            />
+            <span class="field-feedback" aria-live="polite"></span>
           </label>
-          <label>
-            Actual use intensity I
-            <input type="number" name="I" min="0.01" step="0.01" value="1" />
+
+          <label
+            class="field"
+            title="I (Section 3.2 / Appendix A) is the actual use intensity observed for the assessed product."
+          >
+            <span class="field-title" title="I is the realized use intensity for the assessed functional unit.">I – Actual use intensity</span>
+            <span
+              class="field-summary"
+              title="Use telemetry, service data, or scenario assumptions for actual usage."
+              >Measured usage rate in the same unit as I<sub>d</sub>.</span
+            >
+            <input
+              type="number"
+              name="I"
+              min="0.01"
+              step="0.01"
+              value="1"
+              placeholder="e.g., 1.0"
+              data-validate="positive"
+              title="Enter a positive number using digits and decimal points (same unit as Id)."
+            />
+            <span class="field-feedback" aria-live="polite"></span>
           </label>
+
           <p class="helper-text">
-            Tip: when L = Ld and I = Id the use factor X (Eq. 8) equals 1, so indicator changes stem purely from linear flows.
+            Tip: when L = L<sub>d</sub> and I = I<sub>d</sub> the use factor X (Eq. 8) equals 1, so indicator changes stem purely from linear
+            flows.
           </p>
         </form>
       </section>
@@ -96,6 +273,32 @@
         <div class="section-header">
           <h2>Step 2 – Bill of Materials &amp; input factors</h2>
           <p>Upload CSV files or edit the table manually. Percent inputs expect values between 0 and 100.</p>
+          <div class="parameter-glossary">
+            <h3>Key input factors</h3>
+            <ul>
+              <li title="Section 3.2 / Appendix A: Fraction of recycled content entering feedstock production. Gather from supplier LCI data or recycling agreements.">
+                <strong>F<sub>r</sub></strong> – Recycling share in feedstock production.
+              </li>
+              <li title="Section 3.2 / Appendix A: Mass efficiency of feedstock production (usable output vs. total input). Source from process engineers or LCI databases.">
+                <strong>E<sub>fp</sub></strong> – Efficiency of feedstock production.
+              </li>
+              <li title="Section 3.2 / Appendix A: Mass efficiency of component production (net part vs. input). Obtain from manufacturing KPIs or MES data.">
+                <strong>E<sub>cp</sub></strong> – Efficiency of component production.
+              </li>
+              <li title="Section 3.2 / Appendix A: Fraction of feedstock-production losses that are looped back into feedstock. Check scrap management contracts.">
+                <strong>C<sub>fp</sub></strong> – Share of feedstock-production losses recycled.
+              </li>
+              <li title="Section 3.2 / Appendix A: Fraction of component-production losses that are recycled internally. Source from shop-floor scrap reports.">
+                <strong>C<sub>cp</sub></strong> – Share of component-production losses recycled.
+              </li>
+              <li title="Section 3.2 / Appendix A: Efficiency of the material-separation step at end of life. Use dismantling studies or recycler specifications.">
+                <strong>E<sub>ms</sub></strong> – Efficiency of material separation.
+              </li>
+              <li title="Section 3.2 / Appendix A: Efficiency of recycling material back into new feedstock. Use recycler yield data or literature values.">
+                <strong>E<sub>rfp</sub></strong> – Efficiency of recycling into new feedstock.
+              </li>
+            </ul>
+          </div>
         </div>
         <div class="tabs">
           <div class="tab-buttons" role="tablist">
@@ -129,36 +332,112 @@
             </div>
           </div>
           <div class="tab-panel hidden" data-tab-panel="manual" role="tabpanel">
-            <div class="table-actions">
-              <div>
-                <button type="button" id="add-row">Add component</button>
-                <button type="button" id="reset-example" class="secondary">Reset to example data</button>
-              </div>
-              <p class="helper-text">
-                Columns Fr–Erfp are entered as percentages. Invalid cells are highlighted automatically.
-              </p>
+            <div class="manual-grid">
+              <article class="manual-card">
+                <div class="manual-card__header">
+                  <div>
+                    <h3>Manual BoM entry</h3>
+                    <p>See Table 4 in the paper: by listing each part, its material, mass, and primary process.</p>
+                  </div>
+                  <button type="button" id="bom-add-row" class="icon-button" aria-label="Add BoM row">
+                    <span aria-hidden="true">＋</span> Add row
+                  </button>
+                </div>
+                <div class="table-wrapper compact">
+                  <table aria-label="Manual BoM entry table">
+                    <thead>
+                      <tr>
+                        <th>Part ID</th>
+                        <th>Material</th>
+                        <th>Mass [kg]</th>
+                        <th>Process</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody id="manual-bom-body"></tbody>
+                  </table>
+                </div>
+                <div class="manual-actions">
+                  <button type="button" id="bom-complete">BoM complete</button>
+                </div>
+              </article>
+
+              <article class="manual-card">
+                <div class="manual-card__header">
+                  <div>
+                    <h3>Manual input factors</h3>
+                    <p>See Table 5 in the paper: capture recycling shares for each material &amp; process combination.</p>
+                  </div>
+                  <button type="button" id="factors-add-row" class="icon-button" aria-label="Add factor row">
+                    <span aria-hidden="true">＋</span> Add row
+                  </button>
+                </div>
+                <div class="table-wrapper compact">
+                  <table aria-label="Manual input factors entry table">
+                    <thead>
+                      <tr>
+                        <th>Material</th>
+                        <th>Process</th>
+                        <th>F<sub>r</sub> [%]</th>
+                        <th>E<sub>fp</sub> [%]</th>
+                        <th>E<sub>cp</sub> [%]</th>
+                        <th>C<sub>fp</sub> [%]</th>
+                        <th>C<sub>cp</sub> [%]</th>
+                        <th>E<sub>ms</sub> [%]</th>
+                        <th>E<sub>rfp</sub> [%]</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody id="manual-factor-body"></tbody>
+                  </table>
+                </div>
+                <div class="manual-actions">
+                  <button type="button" id="factors-complete">Input factors complete</button>
+                </div>
+              </article>
             </div>
-            <div class="table-wrapper">
-              <table aria-label="Component inputs">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Name</th>
-                    <th>Material</th>
-                    <th>Process</th>
-                    <th>Mass [kg]</th>
-                    <th>Fr [%]</th>
-                    <th>Efp [%]</th>
-                    <th>Ecp [%]</th>
-                    <th>Cfp [%]</th>
-                    <th>Ccp [%]</th>
-                    <th>Ems [%]</th>
-                    <th>Erfp [%]</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody id="components-table-body"></tbody>
-              </table>
+
+            <div class="manual-editor">
+              <div class="manual-editor__header">
+                <div>
+                  <h3>Component parameter editor</h3>
+                  <p>
+                    Once the BoM and input factors are confirmed, this table is auto-populated for advanced adjustments (E<sub>fp</sub>,
+                    E<sub>cp</sub>, C<sub>fp</sub>, etc.).
+                  </p>
+                </div>
+                <div class="table-actions">
+                  <div>
+                    <button type="button" id="add-row">Add component</button>
+                    <button type="button" id="reset-example" class="secondary">Reset to example data</button>
+                  </div>
+                  <p class="helper-text">
+                    Columns F<sub>r</sub>–E<sub>rfp</sub> are entered as percentages. Invalid cells are highlighted automatically.
+                  </p>
+                </div>
+              </div>
+              <div class="table-wrapper">
+                <table aria-label="Component inputs">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Name</th>
+                      <th>Material</th>
+                      <th>Process</th>
+                      <th>Mass [kg]</th>
+                      <th>F<sub>r</sub> [%]</th>
+                      <th>E<sub>fp</sub> [%]</th>
+                      <th>E<sub>cp</sub> [%]</th>
+                      <th>C<sub>fp</sub> [%]</th>
+                      <th>C<sub>cp</sub> [%]</th>
+                      <th>E<sub>ms</sub> [%]</th>
+                      <th>E<sub>rfp</sub> [%]</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="components-table-body"></tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
