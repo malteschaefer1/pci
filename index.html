@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PCI Circularity Calculator</title>
+    <link rel="stylesheet" href="assets/css/styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js" defer></script>
+    <script type="module" src="assets/js/app.js" defer></script>
+  </head>
+  <body>
+    <noscript>
+      <div class="noscript-warning">
+        This tool requires JavaScript. Please enable it to calculate circularity indicators.
+      </div>
+    </noscript>
+    <header class="page-header">
+      <div>
+        <p class="eyebrow">Product Circularity &amp; CII assistant</p>
+        <h1>PCI Circularity Calculator</h1>
+        <p>
+          Estimate Product Circularity Indicator (PCI), Component Circularity Indicator (CCI), and Circularity Impact Indicator (CII)
+          directly in your browser. Upload CSV files or edit data inline, then visualize the results per Appendix A of the PCI paper.
+        </p>
+        <div class="link-row">
+          <a href="PCI_paper_V2.pdf" target="_blank" rel="noopener">Open PCI methodology (PDF)</a>
+          <span aria-hidden="true">•</span>
+          <a href="README.md" target="_blank" rel="noopener">Project README</a>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section id="intro" class="card">
+        <h2>How it works</h2>
+        <p>
+          Follow the numbered steps below: set product-level parameters, load or enter component data, compute indicators, review the
+          charts, and export your results. All logic follows Sections 3–4 and Appendix A of the accompanying paper.
+        </p>
+        <ul>
+          <li>Pure client-side app – simply open <code>index.html</code>.</li>
+          <li>Percent inputs are entered as 0–100 in the UI and converted to 0–1 internally.</li>
+          <li>Bring your own CSVs or use the templates provided here.</li>
+          <li>Visual outputs powered by Chart.js; CSV parsing handled by Papa Parse.</li>
+        </ul>
+      </section>
+
+      <section id="status-panel" class="status-panel" aria-live="polite"></section>
+
+      <section id="product-params" class="card">
+        <div class="section-header">
+          <h2>Step 1 – Product parameters</h2>
+          <p>Provide high-level parameters that apply to every component of this product.</p>
+        </div>
+        <form id="product-form" class="grid two-col">
+          <label>
+            Product name
+            <input type="text" name="productName" placeholder="e.g., Guard Lock Switch" />
+          </label>
+          <label>
+            Share of reused components (Fu, %)
+            <input type="number" name="Fu" min="0" max="100" step="0.1" value="0" />
+          </label>
+          <label>
+            Reusable share at end-of-life (Cu, %)
+            <input type="number" name="Cu" min="0" max="100" step="0.1" value="60" />
+          </label>
+          <label>
+            Recyclable share at end-of-life (Cr, %)
+            <input type="number" name="Cr" min="0" max="100" step="0.1" value="56" />
+          </label>
+          <label>
+            Expected lifetime Ld (same unit as L)
+            <input type="number" name="Ld" min="0.01" step="0.01" value="1" />
+          </label>
+          <label>
+            Actual lifetime L
+            <input type="number" name="L" min="0.01" step="0.01" value="1" />
+          </label>
+          <label>
+            Expected use intensity Id
+            <input type="number" name="Id" min="0.01" step="0.01" value="1" />
+          </label>
+          <label>
+            Actual use intensity I
+            <input type="number" name="I" min="0.01" step="0.01" value="1" />
+          </label>
+          <p class="helper-text">
+            Tip: when L = Ld and I = Id the use factor X (Eq. 8) equals 1, so indicator changes stem purely from linear flows.
+          </p>
+        </form>
+      </section>
+
+      <section id="data-entry" class="card">
+        <div class="section-header">
+          <h2>Step 2 – Bill of Materials &amp; input factors</h2>
+          <p>Upload CSV files or edit the table manually. Percent inputs expect values between 0 and 100.</p>
+        </div>
+        <div class="tabs">
+          <div class="tab-buttons" role="tablist">
+            <button type="button" class="tab-button active" data-tab="csv" role="tab" aria-selected="true">CSV mode</button>
+            <button type="button" class="tab-button" data-tab="manual" role="tab" aria-selected="false">Manual mode</button>
+          </div>
+          <div class="tab-panel" data-tab-panel="csv" role="tabpanel">
+            <div class="grid two-col">
+              <div>
+                <h3>CSV templates</h3>
+                <p>Download fresh templates whenever you need a clean starting point.</p>
+                <div class="button-row">
+                  <button type="button" class="secondary" data-download="bom">Download BoM template (CSV)</button>
+                  <button type="button" class="secondary" data-download="factors">Download input-factors template (CSV)</button>
+                </div>
+              </div>
+              <div>
+                <h3>Upload filled CSVs</h3>
+                <label class="file-control">
+                  Upload BoM CSV
+                  <input type="file" id="bom-upload" accept=".csv" />
+                </label>
+                <label class="file-control">
+                  Upload input-factors CSV
+                  <input type="file" id="factors-upload" accept=".csv" />
+                </label>
+                <p class="helper-text">
+                  After upload, the editable table in Manual mode reflects the parsed data so you can fine-tune the numbers.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="tab-panel hidden" data-tab-panel="manual" role="tabpanel">
+            <div class="table-actions">
+              <div>
+                <button type="button" id="add-row">Add component</button>
+                <button type="button" id="reset-example" class="secondary">Reset to example data</button>
+              </div>
+              <p class="helper-text">
+                Columns Fr–Erfp are entered as percentages. Invalid cells are highlighted automatically.
+              </p>
+            </div>
+            <div class="table-wrapper">
+              <table aria-label="Component inputs">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Material</th>
+                    <th>Process</th>
+                    <th>Mass [kg]</th>
+                    <th>Fr [%]</th>
+                    <th>Efp [%]</th>
+                    <th>Ecp [%]</th>
+                    <th>Cfp [%]</th>
+                    <th>Ccp [%]</th>
+                    <th>Ems [%]</th>
+                    <th>Erfp [%]</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="components-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="calculation" class="card">
+        <div class="section-header">
+          <h2>Step 3 – Calculate PCI, CCI &amp; CII</h2>
+          <p>All formulas reference Appendix A (Eq. 3–23). Make sure each component has complete data before running.</p>
+        </div>
+        <div class="calculate-row">
+          <button type="button" id="compute-btn">Compute circularity indicators</button>
+          <div>
+            <p class="helper-text">
+              PCI is reported between 0 and 1. CCI is per component, CII is reported as a percentage.
+            </p>
+          </div>
+        </div>
+        <div id="results" class="results hidden">
+          <div class="pci-summary">
+            <div>
+              <p class="label">Product name</p>
+              <p id="product-name-display" class="value">–</p>
+            </div>
+            <div>
+              <p class="label">Use factor X (Eq. 8)</p>
+              <p id="use-factor" class="value">–</p>
+            </div>
+            <div>
+              <p class="label">Total mass</p>
+              <p id="total-mass" class="value">– kg</p>
+            </div>
+          </div>
+          <div class="pci-meter">
+            <div class="pci-meter__header">
+              <span>Product Circularity Indicator (Eq. 3 &amp; 5)</span>
+              <strong id="pci-value">–</strong>
+            </div>
+            <div class="pci-meter__bar">
+              <div id="pci-bar" style="width: 0%"></div>
+            </div>
+          </div>
+          <div class="table-wrapper">
+            <table aria-label="Component results">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Name</th>
+                  <th>Mass [kg]</th>
+                  <th>CCI</th>
+                  <th>CII [%]</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody id="results-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="visualizations" class="card">
+        <div class="section-header">
+          <h2>Step 4 – Visualize the results</h2>
+          <p>Bar charts help pinpoint outliers at a glance. Charts refresh every time you recompute.</p>
+        </div>
+        <div class="grid two-col chart-grid">
+          <div>
+            <h3>CCI by component</h3>
+            <canvas id="cci-chart" height="200"></canvas>
+          </div>
+          <div>
+            <h3>CII by component</h3>
+            <canvas id="cii-chart" height="200"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <section id="export" class="card">
+        <div class="section-header">
+          <h2>Step 5 – Export data</h2>
+          <p>Download your working tables or share calculated outputs.</p>
+        </div>
+        <div class="button-row">
+          <button type="button" data-export="bom" class="secondary">Download current BoM CSV</button>
+          <button type="button" data-export="factors" class="secondary">Download current input-factors CSV</button>
+          <button type="button" data-export="results" class="secondary">Download results CSV</button>
+        </div>
+        <p class="helper-text">
+          CSV exports include everything currently shown in the Manual mode table. The results CSV adds LFI, CCI, and CII per component.
+        </p>
+      </section>
+    </main>
+
+    <footer class="page-footer">
+      <p>
+        Built with vanilla HTML/CSS/JS. Logic references PCI_paper_V2.pdf. Licensed under the MIT License (see LICENSE).
+      </p>
+    </footer>
+  </body>
+</html>
