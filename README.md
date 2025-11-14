@@ -6,7 +6,7 @@ This browser-only tool reproduces the Product Circularity Indicator (PCI), Compo
 
 <figure style="background:#fff;padding:12px;border:1px solid #e0e0e0;border-radius:6px;">
   <img src="examples/flowchart_generic.png" alt="Workflow overview" style="display:block;margin:0 auto;background:#fff;">
-  <figcaption style="text-align:center;margin-top:8px;font-style:italic;">Figure: Generic flowchart showcasing the PCI variables.</figcaption>
+  <figcaption style="text-align:center;margin-top:8px;font-style:italic;">*Figure: Generic flowchart showcasing the PCI variables.*</figcaption>
 </figure>
 
 ## Background
