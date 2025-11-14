@@ -18,6 +18,7 @@
         This tool requires JavaScript. Please enable it to calculate circularity indicators.
       </div>
     </noscript>
+    <!-- ===== Hero / Intro header ===== -->
     <header class="page-header">
       <div>
         <p class="eyebrow">Product Circularity assistant</p>
@@ -26,15 +27,23 @@
           Estimate Product Circularity Indicator (PCI), Component Circularity Indicator (CCI), and Circularity Impact Indicator (CII)
           directly in your browser. Upload CSV files or edit data inline, then visualize the results per Appendix A of the PCI paper.
         </summary>
+        <p class="subtitle">
+          Authors: Jacqueline Müller · Malte Schäfer · Mathis auf dem Graben · Tim Katzwinkel · Manuel Löwer
+        </p>
+        <p class="disclaimer">
+          ⚠️ Work in progress: this tool evolves alongside the PCI methodology. Please validate results before relying on them in
+          production workflows.
+        </p>
         <div class="link-row">
           <a href="PCI_paper_V2.pdf" target="_blank" rel="noopener">Open PCI methodology (PDF)</a>
           <span aria-hidden="true">•</span>
-          <a href="README.html" target="_blank" rel="noopener">Project README</a>
+          <a href="README.html" target="_blank" rel="noopener">Open project README file</a>
         </div>
       </div>
     </header>
 
     <main>
+      <!-- ===== Step-by-step explainer ===== -->
       <section id="intro" class="card">
         <h2>How it works</h2>
         <p>
@@ -55,15 +64,18 @@
         </ul>
       </section>
 
+      <!-- ===== Async status banner ===== -->
       <section id="status-panel" class="status-panel" aria-live="polite">
         <span class="status-panel__title">Status</span>
         <span id="status-message">Ready for input.</span>
       </section>
 
+      <!-- ===== Step 1: Product parameters ===== -->
       <section id="product-params" class="card">
         <div class="section-header">
           <h2>Step 1 – Product parameters</h2>
           <p>Provide high-level parameters that apply to every component of this product.</p>
+          <button type="button" id="reset-product-params" class="secondary">Reset product parameters</button>
         </div>
         <form id="product-form" class="grid two-col">
           <label
@@ -111,7 +123,7 @@
               max="100"
               step="0.1"
               value="0"
-              placeholder="0.0 – 100.0"
+              placeholder="0.0 - 100.0"
               data-validate="percentage"
               title="Enter a percentage between 0 and 100. Use digits and decimal points only."
             />
@@ -137,7 +149,7 @@
               max="100"
               step="0.1"
               value="60"
-              placeholder="0.0 – 100.0"
+              placeholder="0.0 - 100.0"
               data-validate="percentage"
               title="Enter a percentage between 0 and 100. Use digits and decimal points only."
             />
@@ -163,7 +175,7 @@
               max="100"
               step="0.1"
               value="56"
-              placeholder="0.0 – 100.0"
+              placeholder="0.0 - 100.0"
               data-validate="percentage"
               title="Enter a percentage between 0 and 100. Use digits and decimal points only."
             />
@@ -186,7 +198,7 @@
               min="0.01"
               step="0.01"
               value="1"
-              placeholder="e.g., 1.0"
+              placeholder="e.g. 1.0"
               data-validate="positive"
               title="Enter a positive number using digits and decimal points (same unit as L)."
             />
@@ -209,7 +221,7 @@
               min="0.01"
               step="0.01"
               value="1"
-              placeholder="e.g., 1.0"
+              placeholder="e.g. 1.0"
               data-validate="positive"
               title="Enter a positive number using digits and decimal points (same unit as Ld)."
             />
@@ -232,7 +244,7 @@
               min="0.01"
               step="0.01"
               value="1"
-              placeholder="e.g., 1.0"
+              placeholder="e.g. 1.0"
               data-validate="positive"
               title="Enter a positive number using digits and decimal points (same unit as I)."
             />
@@ -255,7 +267,7 @@
               min="0.01"
               step="0.01"
               value="1"
-              placeholder="e.g., 1.0"
+              placeholder="e.g. 1.0"
               data-validate="positive"
               title="Enter a positive number using digits and decimal points (same unit as Id)."
             />
@@ -269,6 +281,7 @@
         </form>
       </section>
 
+      <!-- ===== Step 2: Data entry (CSV & Manual) ===== -->
       <section id="data-entry" class="card">
         <div class="section-header">
           <h2>Step 2 – Bill of Materials &amp; input factors</h2>
@@ -314,6 +327,11 @@
                   <button type="button" class="secondary" data-download="bom">Download BoM template (CSV)</button>
                   <button type="button" class="secondary" data-download="factors">Download input-factors template (CSV)</button>
                 </div>
+                <p class="helper-text">
+                  Want to explore the case-study data from PCI_paper_V2? Load the ready-made CSVs under <code>/examples</code> (for
+                  instance <code>examples/bom_case_study.csv</code> and <code>examples/input_factors_case_study.csv</code>) via the
+                  upload buttons on the right.
+                </p>
               </div>
               <div>
                 <h3>Upload filled CSVs</h3>
@@ -348,6 +366,7 @@
                     <thead>
                       <tr>
                         <th>Part ID</th>
+                        <th>Part name</th>
                         <th>Material</th>
                         <th>Mass [kg]</th>
                         <th>Process</th>
@@ -356,13 +375,22 @@
                     </thead>
                     <tbody id="manual-bom-body"></tbody>
                   </table>
+                  <datalist id="bom-suggest-part"></datalist>
+                  <datalist id="bom-suggest-name"></datalist>
+                  <datalist id="bom-suggest-material"></datalist>
+                  <datalist id="bom-suggest-mass"></datalist>
+                  <datalist id="bom-suggest-process"></datalist>
                 </div>
+                <p class="helper-text">
+                  Component IDs must be unique. Part names, materials, and processes may repeat (e.g., two IDs can reference the same
+                  material/process combination).
+                </p>
                 <div class="manual-actions">
                   <button type="button" id="bom-complete">BoM complete</button>
                 </div>
               </article>
 
-              <article class="manual-card">
+              <article class="manual-card" id="manual-factors-card" hidden>
                 <div class="manual-card__header">
                   <div>
                     <h3>Manual input factors</h3>
@@ -395,9 +423,12 @@
                   <button type="button" id="factors-complete">Input factors complete</button>
                 </div>
               </article>
+              <div class="manual-placeholder" id="manual-factors-placeholder">
+                Click “BoM complete” to auto-generate material/process combinations for input factors.
+              </div>
             </div>
 
-            <div class="manual-editor">
+            <div class="manual-editor" id="manual-editor-card" hidden>
               <div class="manual-editor__header">
                 <div>
                   <h3>Component parameter editor</h3>
@@ -439,10 +470,14 @@
                 </table>
               </div>
             </div>
+            <div class="manual-placeholder" id="manual-editor-placeholder">
+              Complete the BoM and input factors to enable the component parameter editor.
+            </div>
           </div>
         </div>
       </section>
 
+      <!-- ===== Step 3: Calculation ===== -->
       <section id="calculation" class="card">
         <div class="section-header">
           <h2>Step 3 – Calculate PCI, CCI &amp; CII</h2>
@@ -452,7 +487,7 @@
           <button type="button" id="compute-btn">Compute circularity indicators</button>
           <div>
             <p class="helper-text">
-              PCI is reported between 0 and 1. CCI is per component, CII is reported as a percentage.
+              PCI refers to the whole product (0...1), CCI (0...1) and CII (0...100 %) to individual components.
             </p>
           </div>
         </div>
@@ -463,17 +498,35 @@
               <p id="product-name-display" class="value">–</p>
             </div>
             <div>
-              <p class="label">Use factor X (Eq. 8)</p>
-              <p id="use-factor" class="value">–</p>
-            </div>
-            <div>
               <p class="label">Total mass</p>
               <p id="total-mass" class="value">– kg</p>
+              <p class="subvalue">Virgin feedstock mass (V) - lower is better: <span id="total-virgin">– kg</span></p>
+              <p class="subvalue">Unrecoverable waste mass (W) - lower is better: <span id="total-waste">– kg</span></p>
+            </div>
+          </div>
+          <div class="metric-grid">
+            <div class="metric-meter">
+              <div class="metric-meter__header">
+                <span>Product use factor (X) - higher is better</span>
+                <strong id="use-factor-value">–</strong>
+              </div>
+              <div class="metric-meter__bar">
+                <div id="use-factor-bar"></div>
+              </div>
+            </div>
+            <div class="metric-meter">
+              <div class="metric-meter__header">
+                <span>Linear Flow Index (LFI) - lower is better</span>
+                <strong id="lfi-value">–</strong>
+              </div>
+              <div class="metric-meter__bar">
+                <div id="lfi-bar"></div>
+              </div>
             </div>
           </div>
           <div class="pci-meter">
             <div class="pci-meter__header">
-              <span>Product Circularity Indicator (Eq. 3 &amp; 5)</span>
+              <span>Product Circularity Indicator (PCI) - higher is better</span>
               <strong id="pci-value">–</strong>
             </div>
             <div class="pci-meter__bar">
@@ -484,9 +537,12 @@
             <table aria-label="Component results">
               <thead>
                 <tr>
+                  <th>Signature</th>
                   <th>ID</th>
                   <th>Name</th>
                   <th>Mass [kg]</th>
+                  <th>Material</th>
+                  <th>Process</th>
                   <th>CCI</th>
                   <th>CII [%]</th>
                   <th>Notes</th>
@@ -498,27 +554,48 @@
         </div>
       </section>
 
+      <!-- ===== Step 4: Visualizations ===== -->
       <section id="visualizations" class="card">
         <div class="section-header">
           <h2>Step 4 – Visualize the results</h2>
-          <p>Bar charts help pinpoint outliers at a glance. Charts refresh every time you recompute.</p>
+          <p>Columns reflect the Component Circularity Indicator (CCI, left) and Circularity Impact Indicator (CII, right). The CCI reflects the degree of circularity of each component, and the CII the contribution of each component to the overall product circularity (PCI). Charts refresh every time you recompute.</p>
         </div>
         <div class="grid two-col chart-grid">
           <div>
-            <h3>CCI by component</h3>
+            <div class="chart-header">
+              <h3>CCI by component</h3>
+              <button type="button" id="sort-cci" class="secondary">Sort high → low</button>
+            </div>
             <canvas id="cci-chart" height="200"></canvas>
           </div>
           <div>
-            <h3>CII by component</h3>
+            <div class="chart-header">
+              <h3>CII by component</h3>
+              <button type="button" id="sort-cii" class="secondary">Sort high → low</button>
+            </div>
             <canvas id="cii-chart" height="200"></canvas>
           </div>
         </div>
       </section>
 
+      <!-- ===== Step 5: Export ===== -->
       <section id="export" class="card">
         <div class="section-header">
           <h2>Step 5 – Export data</h2>
           <p>Download your working tables or share calculated outputs.</p>
+        </div>
+        <div class="export-settings">
+          <label>
+            Decimal separator
+            <select id="decimal-separator">
+              <option value="dot" selected>Dot (.)</option>
+              <option value="comma">Comma (,)</option>
+            </select>
+          </label>
+          <p class="helper-text">
+            CSV exports will use the selected separator for numeric values. Choose “Comma” if your spreadsheet locale expects
+            decimals as 0,160 instead of 0.160.
+          </p>
         </div>
         <div class="button-row">
           <button type="button" data-export="bom" class="secondary">Download current BoM CSV</button>
@@ -533,7 +610,9 @@
 
     <footer class="page-footer">
       <p>
-        Built with vanilla HTML/CSS/JS. Logic references PCI_paper_V2.pdf. Licensed under the MIT License (see LICENSE).
+        Built with vanilla HTML/CSS/JS. Logic references
+        <a href="PCI_paper_V2.pdf" target="_blank" rel="noopener">PCI methodology paper</a>. Licensed under the
+        <a href="LICENSE" target="_blank" rel="noopener">MIT License</a>.
       </p>
     </footer>
   </body>

@@ -1,3 +1,8 @@
+/**
+ * circularity.js – pure math utilities implementing Appendix A of PCI_paper_V2.
+ * No DOM access here; every function is deterministic and testable.
+ */
+
 (() => {
   const globalScope = typeof window !== 'undefined' ? window : globalThis;
 
@@ -65,6 +70,8 @@ function computeCircularityIndicators(components, productParams) {
   );
 
   const PCI = computePCI(perComponent);
+  const productFlows = aggregateProductFlows(perComponent);
+  const productLFI = computeProductLFI(PCI, X);
   const withCii = computeCIIForComponents(perComponent, PCI);
 
   return {
@@ -72,6 +79,11 @@ function computeCircularityIndicators(components, productParams) {
     PCI,
     X,
     M_total: totalMass,
+    productLFI,
+    productFlows: {
+      V: productFlows.V,
+      W: productFlows.W,
+    },
     debug: buildDebugSnapshot(withCii),
   };
 }
@@ -199,6 +211,30 @@ function deriveMassFlows(M, component, productParams) {
     C,
     linear,
   };
+}
+
+function aggregateProductFlows(components) {
+  return components.reduce(
+    (acc, comp) => {
+      const flows = comp.flows || {};
+      acc.V += flows.V ?? 0;
+      acc.W += flows.W ?? 0;
+      acc.absR += flows.absR ?? 0;
+      acc.C += flows.C ?? 0;
+      acc.linearV += flows.linear?.V ?? 0;
+      acc.linearW += flows.linear?.W ?? 0;
+      return acc;
+    },
+    { V: 0, W: 0, absR: 0, C: 0, linearV: 0, linearW: 0 }
+  );
+}
+
+function computeProductLFI(PCI, X) {
+  if (!isFinite(X) || X <= 0) {
+    return 0;
+  }
+  const value = (1 - PCI) * X;
+  return value < 0 ? 0 : value;
 }
 
   function computeVirginFeedstockMass(M, Fu, Ecp, Efp, Fr) {

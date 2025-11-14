@@ -1,9 +1,15 @@
+/**
+ * csv-utils.js – helpers for generating templates, parsing uploads, and exporting
+ * CSV files in either dot or comma-decimal locales.
+ */
+
 (() => {
   const globalScope = typeof window !== 'undefined' ? window : globalThis;
 
   const BOM_COLUMNS = ['component_id', 'component_name', 'material', 'process', 'mass_kg'];
   const FACTOR_COLUMNS = [
-    'component_id',
+    'material',
+    'process',
     'Fr_percent',
     'Efp_percent',
     'Ecp_percent',
@@ -39,7 +45,7 @@
  */
   function generateInputFactorsTemplateCsv() {
   const header = FACTOR_COLUMNS.join(',');
-  const example = ['C1', '0', '100', '95', '0', '100', '30', '30'].join(',');
+  const example = ['Polyamide', 'Injection-molding', '0', '100', '95', '0', '100', '30', '30'].join(',');
   return `${header}\n${example}\n`;
 }
 
@@ -79,11 +85,15 @@
   const rows = parseCsv(csvString, FACTOR_COLUMNS);
   const map = new Map();
   rows.forEach((row, index) => {
-    const id = (row.component_id || '').trim();
-    if (!id) {
-      throw new Error(`Row ${index + 2}: component_id is required in the factors CSV.`);
+    const material = (row.material || '').trim();
+    const process = (row.process || '').trim();
+    if (!material && !process) {
+      throw new Error(`Row ${index + 2}: material and/or process is required in the factors CSV.`);
     }
-    map.set(id, {
+    const key = buildFactorKey(material, process);
+    map.set(key, {
+      material,
+      process,
       Fr: parsePercent(row.Fr_percent, 'Fr_percent', index + 2),
       Efp: parsePercent(row.Efp_percent, 'Efp_percent', index + 2),
       Ecp: parsePercent(row.Ecp_percent, 'Ecp_percent', index + 2),
@@ -101,11 +111,18 @@
  * @param {import('./circularity.js').ComponentInput[]} components
  * @returns {string}
  */
-  function exportComponentsToBomCsv(components) {
-  const header = BOM_COLUMNS.join(',');
+  function exportComponentsToBomCsv(components, formatting = defaultFormatting()) {
+  const { decimalSeparator, delimiter } = formatting;
+  const header = BOM_COLUMNS.join(delimiter);
   const body = components
     .map((comp) =>
-      [comp.id, comp.name, comp.material, comp.process, formatNumber(comp.massKg)].join(',')
+      [
+        comp.id,
+        comp.name,
+        comp.material,
+        comp.process,
+        formatNumber(comp.massKg, 3, decimalSeparator),
+      ].join(delimiter)
     )
     .join('\n');
   return `${header}\n${body}\n`;
@@ -116,23 +133,41 @@
  * @param {import('./circularity.js').ComponentInput[]} components
  * @returns {string}
  */
-  function exportComponentsToInputFactorsCsv(components) {
-  const header = FACTOR_COLUMNS.join(',');
-  const body = components
-    .map((comp) =>
-      [
-        comp.id,
-        formatPercent(comp.Fr),
-        formatPercent(comp.Efp),
-        formatPercent(comp.Ecp),
-        formatPercent(comp.Cfp),
-        formatPercent(comp.Ccp),
-        formatPercent(comp.Ems),
-        formatPercent(comp.Erfp),
-      ].join(',')
-    )
-    .join('\n');
-  return `${header}\n${body}\n`;
+  function exportComponentsToInputFactorsCsv(components, formatting = defaultFormatting()) {
+  const { decimalSeparator, delimiter } = formatting;
+  const header = FACTOR_COLUMNS.join(delimiter);
+  const combos = new Map();
+  components.forEach((comp) => {
+    const key = buildFactorKey(comp.material, comp.process);
+    if (!key || combos.has(key)) {
+      return;
+    }
+    combos.set(key, {
+      material: comp.material || '',
+      process: comp.process || '',
+      Fr: comp.Fr,
+      Efp: comp.Efp,
+      Ecp: comp.Ecp,
+      Cfp: comp.Cfp,
+      Ccp: comp.Ccp,
+      Ems: comp.Ems,
+      Erfp: comp.Erfp,
+    });
+  });
+  const rows = Array.from(combos.values()).map((row) =>
+    [
+      row.material,
+      row.process,
+      formatPercent(row.Fr, decimalSeparator),
+      formatPercent(row.Efp, decimalSeparator),
+      formatPercent(row.Ecp, decimalSeparator),
+      formatPercent(row.Cfp, decimalSeparator),
+      formatPercent(row.Ccp, decimalSeparator),
+      formatPercent(row.Ems, decimalSeparator),
+      formatPercent(row.Erfp, decimalSeparator),
+    ].join(delimiter)
+  );
+  return `${header}\n${rows.join('\n')}\n`;
 }
 
 /**
@@ -140,7 +175,8 @@
  * @param {import('./circularity.js').ComponentInput[]} components
  * @returns {string}
  */
-  function exportResultsCsv(components) {
+  function exportResultsCsv(components, formatting = defaultFormatting()) {
+  const { decimalSeparator, delimiter } = formatting;
   const header = [
     'component_id',
     'component_name',
@@ -154,23 +190,23 @@
     'Rout',
     'absR',
     'C',
-  ].join(',');
+  ].join(delimiter);
   const body = components
     .map((comp) =>
       [
         comp.id,
         comp.name,
-        formatNumber(comp.massKg),
-        formatNumber(comp.CCI, 4),
-        formatNumber(comp.CII, 2),
-        formatNumber(comp.LFI, 4),
-        formatNumber(comp.flows?.V),
-        formatNumber(comp.flows?.W),
-        formatNumber(comp.flows?.Rin),
-        formatNumber(comp.flows?.Rout),
-        formatNumber(comp.flows?.absR),
-        formatNumber(comp.flows?.C),
-      ].join(',')
+        formatNumber(comp.massKg, 3, decimalSeparator),
+        formatNumber(comp.CCI, 4, decimalSeparator),
+        formatNumber(comp.CII, 2, decimalSeparator),
+        formatNumber(comp.LFI, 4, decimalSeparator),
+        formatNumber(comp.flows?.V, 3, decimalSeparator),
+        formatNumber(comp.flows?.W, 3, decimalSeparator),
+        formatNumber(comp.flows?.Rin, 3, decimalSeparator),
+        formatNumber(comp.flows?.Rout, 3, decimalSeparator),
+        formatNumber(comp.flows?.absR, 3, decimalSeparator),
+        formatNumber(comp.flows?.C, 3, decimalSeparator),
+      ].join(delimiter)
     )
     .join('\n');
   return `${header}\n${body}\n`;
@@ -237,15 +273,29 @@
   return Math.min(1, Math.max(0, value));
 }
 
-  function formatNumber(value, digits = 3) {
+  function formatNumber(value, digits = 3, decimalSeparator = '.') {
   if (value === undefined || value === null || Number.isNaN(value)) {
     return '';
   }
-  return Number(value).toFixed(digits);
+  const formatted = Number(value).toFixed(digits);
+  if (decimalSeparator === ',') {
+    return formatted.replace('.', ',');
+  }
+  return formatted;
 }
 
-  function formatPercent(fraction) {
-  return (clamp01(fraction) * 100).toFixed(1);
+  function formatPercent(fraction, decimalSeparator = '.') {
+  return formatNumber(clamp01(fraction) * 100, 1, decimalSeparator);
+}
+
+  function defaultFormatting() {
+  return { decimalSeparator: '.', delimiter: ',' };
+}
+
+  function buildFactorKey(material, process) {
+  const mat = (material || '').trim().toLowerCase();
+  const proc = (process || '').trim().toLowerCase();
+  return `${mat}|${proc}`;
 }
 
   globalScope.CsvUtils = {

@@ -1,6 +1,10 @@
 # PCI Circularity Calculator – Browser-based Tool
 
-This repository contains a pure HTML/CSS/JavaScript tool that replicates the Product Circularity Indicator (PCI), Component Circularity Indicator (CCI), and Circularity Impact Indicator (CII) calculations from **PCI_paper_V2.pdf** (Sections 3–4 and Appendix A). Open `index.html` in any modern browser to load the interface, enter or import Bill of Materials (BoM) data, and calculate the indicators alongside simple charts.
+> ⚠️ **Work in progress:** This app evolves alongside the PCI methodology. Always sense-check results.
+
+This browser-only tool reproduces the Product Circularity Indicator (PCI), Component Circularity Indicator (CCI), and Circularity Impact Indicator (CII) workflow from **PCI_paper_V2.pdf** (Sections 3–4 + Appendix A). Open `index.html` and you can enter, import, visualize, and export results without installing anything.
+
+![Workflow overview](examples/workflow_overview.png "Optional diagram – replace with your own if desired")
 
 ## Background
 
@@ -10,9 +14,17 @@ The workflow is adapted from Müller et al., *Assessing Product Circularity and 
 - Section 4: Case study structure for handling components and hotspots.
 - Appendix A: Equations 3–23 for PCI, CCI, CII, LFI, and all intermediate mass flows.
 
-All variable names in the UI map directly to the notation from Appendix A (e.g., `Fu`, `Fr`, `Efp`, `Ecp`). Percentages are entered as 0–100 in the UI but stored internally as fractions between 0 and 1.
+All UI field names map directly to Appendix A (`Fu`, `Fr`, `Efp`, `Ecp`, …). Percent inputs are entered as 0–100 and stored internally as fractions.
 
-## Features
+## 🧭 Choose your path
+
+| Persona | Start here |
+| --- | --- |
+| 🆕 **Never used Git/GitHub** | Follow the “Download ZIP” steps below and open `index.html`. |
+| 💼 **Product or design lead** | Use the ready-made CSVs in `/examples` to explore the case study immediately. |
+| 🧑‍💻 **Engineer / Analyst** | Clone the repo, edit the code, or extend the math layer for PCF integration. |
+
+## ✨ Highlights
 
 - 🔌 **Zero-install**: double-click `index.html`; no build tools or servers.
 - 📥 **CSV templates** for BoM and circularity parameters plus CSV export of working data and results.
@@ -20,6 +32,31 @@ All variable names in the UI map directly to the notation from Appendix A (e.g.,
 - 📊 **Chart.js visualizations** for CCI and CII per component.
 - 🧠 **Defensive math layer** (`assets/js/circularity.js`) that implements Equations 3–23 with extensive JSDoc comments and optional debug logging.
 - ⚠️ **Friendly status messages** and per-cell highlighting for invalid data (missing IDs, duplicate IDs, negative mass, out-of-range efficiencies, etc.).
+- 📂 **Ready-to-use case-study CSVs** in `/examples` mirroring the paper’s data (load them via Step 2’s upload buttons to explore the full workflow instantly).
+- 🌍 **Locale-aware exports**: pick your decimal separator (dot/comma) before downloading CSVs.
+
+## 🧑‍🍳 Quick start recipes
+
+### Option A – Download ZIP (Git-free)
+1. Click the green **Code ▾ → Download ZIP** button in GitHub.
+2. Unzip the archive (Windows: right-click → *Extract All...*; macOS: double-click).
+3. Open the extracted folder and double-click `index.html`.
+4. That’s it—your browser hosts the entire tool offline.
+
+### Option B – Clone via Git
+```bash
+git clone https://github.com/<your-org>/pci.git
+cd pci
+open index.html   # macOS
+# or
+start index.html  # Windows PowerShell
+```
+
+### Try the paper’s dataset immediately
+1. Go to **Step 2 – CSV mode**.
+2. Click **Upload BoM CSV** and choose `examples/bom_case_study.csv`.
+3. Click **Upload input-factors CSV** and choose `examples/input_factors_case_study.csv`.
+4. Continue with Step 3 to replicate the case-study results.
 
 ## Quick start
 
@@ -34,7 +71,7 @@ The interface is fully client-side, so no data leaves your machine.
 ## Workflow walkthrough
 
 1. **Step 1 – Product parameters**: enter `Fu`, `Cu`, `Cr`, and the lifetime/use intensity pairs (`L`, `Ld`, `I`, `Id`). These drive the use factor \(X = \frac{I \cdot L}{Id \cdot Ld}\) (Eq. 8).
-2. **Step 2 – BoM & input factors**: either download the CSV templates or work directly in the Manual table. Columns map to the component inputs defined in Section 3.2.
+2. **Step 2 – BoM & input factors**: either download the CSV templates or work directly in the Manual table. Columns map to the component inputs defined in Section 3.2. Prefer CSV mode? Use the templates or upload the case-study files from `/examples` (`bom_case_study.csv`, `input_factors_case_study.csv`) to reproduce the paper’s dataset.
 3. **Step 3 – Calculation**: validates the grid and runs all equations from Appendix A, exposing per-component warnings (e.g., when CCI gets clamped to zero).
 4. **Step 4 – Visualizations**: displays two bar charts (CCI and CII by component) using Chart.js.
 5. **Step 5 – Export**: download your BoM, factor table, or the enriched results (CCI, CII, LFI, V/W/R flows).

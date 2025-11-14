@@ -1,3 +1,8 @@
+/**
+ * app.js – orchestrates all UI interactions (forms, tables, CSV uploads, charts).
+ * Think of it as the glue between the HTML widgets and the pure math helpers.
+ */
+
 const Circularity = (typeof window !== 'undefined' && window.PCICircularity) || {};
 const CsvUtils = (typeof window !== 'undefined' && window.CsvUtils) || {};
 const ChartHelpers = (typeof window !== 'undefined' && window.ChartHelpers) || {};
@@ -94,6 +99,12 @@ const state = {
   lastComputation: null,
   manualBomRows: [],
   manualFactorRows: [],
+  manualFactorsReady: false,
+  manualEditorReady: false,
+  sortDescending: {
+    cci: false,
+    cii: false,
+  },
 };
 
 const elements = {};
@@ -113,6 +124,9 @@ function init() {
   hydrateManualTablesFromComponents();
   updateProductParamsFromForm();
   updateComputeButtonState();
+  toggleManualFactorsVisibility(state.manualFactorsReady);
+  toggleManualEditorVisibility(state.manualEditorReady);
+  updateSortButtons();
   setStatus('Ready. Load CSVs or use the example data to get started.', 'info');
 }
 
@@ -128,7 +142,6 @@ function cacheElements() {
   elements.computeBtn = document.getElementById('compute-btn');
   elements.resultsSection = document.getElementById('results');
   elements.productNameDisplay = document.getElementById('product-name-display');
-  elements.useFactor = document.getElementById('use-factor');
   elements.totalMass = document.getElementById('total-mass');
   elements.pciValue = document.getElementById('pci-value');
   elements.pciBar = document.getElementById('pci-bar');
@@ -139,10 +152,31 @@ function cacheElements() {
   elements.factorsUpload = document.getElementById('factors-upload');
   elements.manualBomBody = document.getElementById('manual-bom-body');
   elements.manualFactorBody = document.getElementById('manual-factor-body');
+  elements.manualFactorsCard = document.getElementById('manual-factors-card');
+  elements.manualFactorsPlaceholder = document.getElementById('manual-factors-placeholder');
+  elements.manualEditorCard = document.getElementById('manual-editor-card');
+  elements.manualEditorPlaceholder = document.getElementById('manual-editor-placeholder');
+  elements.sortCciBtn = document.getElementById('sort-cci');
+  elements.sortCiiBtn = document.getElementById('sort-cii');
+  elements.useFactorValue = document.getElementById('use-factor-value');
+  elements.useFactorBar = document.getElementById('use-factor-bar');
+  elements.lfiValue = document.getElementById('lfi-value');
+  elements.lfiBar = document.getElementById('lfi-bar');
+  elements.totalVirgin = document.getElementById('total-virgin');
+  elements.totalWaste = document.getElementById('total-waste');
+  elements.decimalSeparator = document.getElementById('decimal-separator');
   elements.bomAddRowBtn = document.getElementById('bom-add-row');
   elements.factorsAddRowBtn = document.getElementById('factors-add-row');
   elements.bomCompleteBtn = document.getElementById('bom-complete');
   elements.factorsCompleteBtn = document.getElementById('factors-complete');
+  elements.resetProductParamsBtn = document.getElementById('reset-product-params');
+  elements.bomSuggestionLists = {
+    part: document.getElementById('bom-suggest-part'),
+    partName: document.getElementById('bom-suggest-name'),
+    material: document.getElementById('bom-suggest-material'),
+    massKg: document.getElementById('bom-suggest-mass'),
+    process: document.getElementById('bom-suggest-process'),
+  };
 }
 
 function bindEvents() {
@@ -201,6 +235,11 @@ function bindEvents() {
 
   elements.computeBtn.addEventListener('click', handleComputation);
 
+  elements.resetProductParamsBtn?.addEventListener('click', () => {
+    resetProductParams();
+    setStatus('Product parameters reset to defaults.', 'info');
+  });
+
   elements.manualBomBody?.addEventListener('input', handleManualBomInput);
   elements.manualBomBody?.addEventListener('click', handleManualBomClick);
   elements.manualFactorBody?.addEventListener('input', handleManualFactorInput);
@@ -215,6 +254,8 @@ function bindEvents() {
   });
   elements.bomCompleteBtn?.addEventListener('click', handleBomComplete);
   elements.factorsCompleteBtn?.addEventListener('click', handleFactorsComplete);
+  elements.sortCciBtn?.addEventListener('click', () => toggleChartSorting('cci'));
+  elements.sortCiiBtn?.addEventListener('click', () => toggleChartSorting('cii'));
 }
 
 function switchTab(name) {
@@ -240,6 +281,31 @@ function updateProductParamsFromForm() {
   state.productParams.I = toPositiveNumber(formData.get('I'));
 }
 
+function resetProductParams() {
+  if (!elements.productForm) {
+    return;
+  }
+  const defaults = {
+    productName: '',
+    Fu: 0,
+    Cu: 60,
+    Cr: 56,
+    Ld: 1,
+    L: 1,
+    Id: 1,
+    I: 1,
+  };
+  Object.entries(defaults).forEach(([key, value]) => {
+    const input = elements.productForm.querySelector(`[name="${key}"]`);
+    if (input) {
+      input.value = typeof value === 'number' ? value.toString() : value;
+      input.dataset.dirty = 'false';
+      setFieldFeedback(input, '');
+    }
+  });
+  updateProductParamsFromForm();
+}
+
 function renderComponentTable() {
   const rows = state.components
     .map((component, index) => renderComponentRow(component, index))
@@ -252,31 +318,19 @@ function hydrateManualTablesFromComponents() {
   if (state.components.length) {
     state.manualBomRows = state.components.map((comp, index) => ({
       part: comp.id || comp.name || `Component ${index + 1}`,
+      partName: comp.name || '',
       material: comp.material || '',
       process: comp.process || '',
       massKg: comp.massKg ?? '',
     }));
-
-    const factorMap = new Map();
-    state.components.forEach((comp) => {
-      const key = buildFactorKey(comp.material, comp.process);
-      if (!key || factorMap.has(key)) {
-        return;
-      }
-      const row = {
-        material: comp.material || '',
-        process: comp.process || '',
-      };
-      MANUAL_FACTOR_FIELDS.forEach((field) => {
-        row[field] = formatPercentInput(comp[field]);
-      });
-      factorMap.set(key, row);
-    });
-    state.manualFactorRows = factorMap.size ? Array.from(factorMap.values()) : [createDefaultFactorRow()];
   } else {
     state.manualBomRows = [createDefaultBomRow()];
-    state.manualFactorRows = [createDefaultFactorRow()];
   }
+  state.manualFactorsReady = false;
+  state.manualEditorReady = false;
+  state.manualFactorRows = [createDefaultFactorRow()];
+  toggleManualFactorsVisibility(false);
+  toggleManualEditorVisibility(false);
   renderManualTables();
 }
 
@@ -296,19 +350,25 @@ function renderManualBomTable() {
     .map(
       (row, index) => `
         <tr data-index="${index}">
-          <td><input type="text" data-field="part" value="${escapeHtml(row.part || '')}" placeholder="e.g., Housing" /></td>
-          <td><input type="text" data-field="material" value="${escapeHtml(row.material || '')}" placeholder="Polyamide" /></td>
-          <td><input type="number" step="0.0001" min="0" data-field="massKg" value="${row.massKg ?? ''}" placeholder="0.000" /></td>
-          <td><input type="text" data-field="process" value="${escapeHtml(row.process || '')}" placeholder="Injection-molding" /></td>
+          <td><input type="text" data-field="part" list="bom-suggest-part" value="${escapeHtml(row.part || '')}" placeholder="e.g., Housing" /></td>
+          <td><input type="text" data-field="partName" list="bom-suggest-name" value="${escapeHtml(row.partName || '')}" placeholder="Cover plate" /></td>
+          <td><input type="text" data-field="material" list="bom-suggest-material" value="${escapeHtml(row.material || '')}" placeholder="Polyamide" /></td>
+          <td><input type="number" step="0.0001" min="0" data-field="massKg" list="bom-suggest-mass" value="${row.massKg ?? ''}" placeholder="0.000" /></td>
+          <td><input type="text" data-field="process" list="bom-suggest-process" value="${escapeHtml(row.process || '')}" placeholder="Injection-molding" /></td>
           <td><button type="button" class="secondary manual-delete" data-action="delete-bom" aria-label="Delete BoM row">✕</button></td>
         </tr>`
     )
     .join('');
   elements.manualBomBody.innerHTML = rows;
+  updateBomSuggestions();
 }
 
 function renderManualFactorTable() {
   if (!elements.manualFactorBody) {
+    return;
+  }
+  if (!state.manualFactorsReady) {
+    elements.manualFactorBody.innerHTML = '';
     return;
   }
   if (!state.manualFactorRows.length) {
@@ -318,7 +378,7 @@ function renderManualFactorTable() {
     .map((row, index) => {
       const percentInputs = MANUAL_FACTOR_FIELDS.map(
         (field) =>
-          `<td><input type="number" min="0" max="100" step="0.1" data-field="${field}" value="${row[field] ?? ''}" placeholder="0.0 – 100.0" /></td>`
+          `<td><input type="number" min="0" max="100" step="0.1" data-field="${field}" value="${row[field] ?? ''}" placeholder="0.0 - 100.0" /></td>`
       ).join('');
       return `
         <tr data-index="${index}">
@@ -332,8 +392,79 @@ function renderManualFactorTable() {
   elements.manualFactorBody.innerHTML = rows;
 }
 
+function toggleManualFactorsVisibility(show) {
+  if (elements.manualFactorsCard) {
+    elements.manualFactorsCard.hidden = !show;
+  }
+  if (elements.manualFactorsPlaceholder) {
+    elements.manualFactorsPlaceholder.classList.toggle('hidden', show);
+  }
+}
+
+function toggleManualEditorVisibility(show) {
+  if (elements.manualEditorCard) {
+    elements.manualEditorCard.hidden = !show;
+  }
+  if (elements.manualEditorPlaceholder) {
+    elements.manualEditorPlaceholder.classList.toggle('hidden', show);
+  }
+}
+
+function toggleChartSorting(metric) {
+  if (!state.lastComputation) {
+    setStatus('Run a calculation before sorting charts.', 'error');
+    return;
+  }
+  state.sortDescending[metric] = !state.sortDescending[metric];
+  updateSortButtons();
+  updateCharts({
+    data: state.lastComputation.components,
+    pci: state.lastComputation.PCI,
+  });
+}
+
+function updateSortButtons() {
+  if (elements.sortCciBtn) {
+    elements.sortCciBtn.textContent = state.sortDescending.cci ? 'Reset order' : 'Sort high \u2192 low';
+  }
+  if (elements.sortCiiBtn) {
+    elements.sortCiiBtn.textContent = state.sortDescending.cii ? 'Reset order' : 'Sort high \u2192 low';
+  }
+}
+
+function updateBomSuggestions() {
+  const lists = elements.bomSuggestionLists;
+  if (!lists) {
+    return;
+  }
+  const suggestionSets = {
+    part: new Set(),
+    partName: new Set(),
+    material: new Set(),
+    massKg: new Set(),
+    process: new Set(),
+  };
+  state.manualBomRows.forEach((row) => {
+    Object.keys(suggestionSets).forEach((key) => {
+      const value = row[key];
+      if (value !== undefined && value !== null && `${value}`.trim()) {
+        suggestionSets[key].add(`${value}`.trim());
+      }
+    });
+  });
+  Object.entries(lists).forEach(([key, datalist]) => {
+    if (!datalist) {
+      return;
+    }
+    const options = Array.from(suggestionSets[key] || [])
+      .map((value) => `<option value="${escapeHtml(value)}"></option>`)
+      .join('');
+    datalist.innerHTML = options;
+  });
+}
+
 function createDefaultBomRow() {
-  return { part: '', material: '', massKg: '', process: '' };
+  return { part: '', partName: '', material: '', massKg: '', process: '' };
 }
 
 function createDefaultFactorRow() {
@@ -348,6 +479,7 @@ function addManualBomRow() {
   const last = state.manualBomRows[state.manualBomRows.length - 1] || createDefaultBomRow();
   state.manualBomRows.push({ ...last });
   renderManualBomTable();
+  invalidateManualFactors();
 }
 
 function addManualFactorRow() {
@@ -371,6 +503,9 @@ function handleManualBomInput(event) {
     return;
   }
   state.manualBomRows[index][field] = target.value;
+  if (field === 'material' || field === 'process') {
+    invalidateManualFactors();
+  }
 }
 
 function handleManualFactorInput(event) {
@@ -403,6 +538,7 @@ function handleManualBomClick(event) {
     const index = Number(row.dataset.index);
     removeManualRow(state.manualBomRows, index, createDefaultBomRow);
     renderManualBomTable();
+    invalidateManualFactors();
   }
 }
 
@@ -430,6 +566,17 @@ function removeManualRow(collection, index, factory) {
   collection.splice(index, 1);
 }
 
+function invalidateManualFactors() {
+  if (!state.manualFactorsReady) {
+    return;
+  }
+  state.manualFactorsReady = false;
+  state.manualEditorReady = false;
+  toggleManualFactorsVisibility(false);
+  toggleManualEditorVisibility(false);
+  renderManualFactorTable();
+}
+
 function handleBomComplete() {
   const validation = validateManualBomRows();
   if (!validation.valid) {
@@ -437,10 +584,15 @@ function handleBomComplete() {
     return;
   }
   syncComponentsFromManualTables();
-  setStatus('BoM captured. You can refine parameters below if needed.', 'success');
+  generateManualFactorsFromBom();
+  setStatus('BoM captured. Input factors generated for each material/process combination.', 'success');
 }
 
 function handleFactorsComplete() {
+  if (!state.manualFactorsReady) {
+    setStatus('Complete the BoM first to generate input factors.', 'error');
+    return;
+  }
   const validation = validateManualFactorRows();
   if (!validation.valid) {
     setStatus(`Fix input-factor rows: ${validation.messages.join(' ')}`, 'error');
@@ -448,6 +600,15 @@ function handleFactorsComplete() {
   }
   syncComponentsFromManualTables();
   setStatus('Input factors captured. Components updated with the latest recycling efficiencies.', 'success');
+  state.manualEditorReady = true;
+  toggleManualEditorVisibility(true);
+}
+
+function generateManualFactorsFromBom() {
+  state.manualFactorRows = buildManualFactorRowsFromBom(state.manualFactorRows);
+  state.manualFactorsReady = true;
+  toggleManualFactorsVisibility(true);
+  renderManualFactorTable();
 }
 
 function validateManualBomRows() {
@@ -492,7 +653,13 @@ function validateManualFactorRows() {
       messages.push(`row ${index + 1}: Process is required.`);
     }
     MANUAL_FACTOR_FIELDS.forEach((field) => {
-      const numericValue = Number(row[field]);
+      const raw = row[field];
+      if (raw === undefined || raw === null || `${raw}`.trim() === '') {
+        rowValid = false;
+        messages.push(`row ${index + 1}: ${field} requires a value between 0 and 100%.`);
+        return;
+      }
+      const numericValue = Number(raw);
       if (!Number.isFinite(numericValue) || numericValue < 0 || numericValue > 100) {
         rowValid = false;
         messages.push(`row ${index + 1}: ${field} must be between 0 and 100%.`);
@@ -523,6 +690,7 @@ function syncComponentsFromManualTables() {
   const previous = new Map(state.components.map((comp) => [comp.id, comp]));
   const components = state.manualBomRows.map((row, index) => {
     const partId = row.part?.trim() || `C${index + 1}`;
+    const partName = row.partName?.trim() || partId;
     const existing = previous.get(partId) || createEmptyComponent();
     const material = row.material?.trim() || '';
     const process = row.process?.trim() || '';
@@ -532,7 +700,7 @@ function syncComponentsFromManualTables() {
     const updated = {
       ...existing,
       id: partId,
-      name: partId,
+      name: partName,
       material,
       process,
       massKg: Number.isFinite(mass) ? mass : 0,
@@ -576,11 +744,66 @@ function buildFactorKey(material, process) {
   return `${mat}|${proc}`;
 }
 
+function buildManualFactorRowsFromBom(previousRows = []) {
+  const previousMap = new Map();
+  previousRows.forEach((row) => {
+    const key = buildFactorKey(row.material, row.process);
+    if (key) {
+      previousMap.set(key, row);
+    }
+  });
+  const combos = [];
+  const seen = new Set();
+  state.manualBomRows.forEach((row) => {
+    const key = buildFactorKey(row.material, row.process);
+    if (!key || seen.has(key)) {
+      return;
+    }
+    seen.add(key);
+    const previous = previousMap.get(key);
+    const newRow = {
+      material: row.material || '',
+      process: row.process || '',
+    };
+    MANUAL_FACTOR_FIELDS.forEach((field) => {
+      if (previous && previous[field] !== undefined) {
+        newRow[field] = previous[field];
+      } else {
+        newRow[field] = formatPercentInput(getComponentFactorDefault(field, row.material, row.process));
+      }
+    });
+    combos.push(newRow);
+  });
+  if (!combos.length) {
+    combos.push(createDefaultFactorRow());
+  }
+  return combos;
+}
+
+function getComponentFactorDefault(field, material, process) {
+  const match = state.components.find(
+    (comp) =>
+      comp.material?.toLowerCase() === (material || '').toLowerCase() &&
+      comp.process?.toLowerCase() === (process || '').toLowerCase()
+  );
+  if (match && typeof match[field] === 'number') {
+    return match[field];
+  }
+  return COMPONENT_PERCENT_DEFAULTS[field] ?? 0;
+}
+
 function formatPercentInput(fraction) {
   if (!Number.isFinite(fraction)) {
     return '';
   }
   return (fraction * 100).toFixed(1);
+}
+
+function formatDecimal(value, digits = 3) {
+  if (!Number.isFinite(value)) {
+    return '–';
+  }
+  return Number(value).toFixed(digits);
 }
 
 function renderComponentRow(component, index) {
@@ -659,19 +882,31 @@ function handleExport(type) {
     if (!state.components.length) {
       throw new Error('No components available to export.');
     }
+    const csvFormat = getCsvFormatting();
     if (type === 'bom') {
-      downloadTextFile('bom_current.csv', exportComponentsToBomCsv(state.components));
+      downloadTextFile('bom_current.csv', exportComponentsToBomCsv(state.components, csvFormat));
     } else if (type === 'factors') {
-      downloadTextFile('input_factors_current.csv', exportComponentsToInputFactorsCsv(state.components));
+      downloadTextFile('input_factors_current.csv', exportComponentsToInputFactorsCsv(state.components, csvFormat));
     } else if (type === 'results') {
       if (!state.lastComputation) {
         throw new Error('Run a calculation before exporting results.');
       }
-      downloadTextFile('circularity_results.csv', exportResultsCsv(state.lastComputation.components));
+      downloadTextFile(
+        'circularity_results.csv',
+        exportResultsCsv(state.lastComputation.components, csvFormat)
+      );
     }
   } catch (error) {
     setStatus(error.message || 'Failed to export CSV.', 'error');
   }
+}
+
+function getCsvFormatting() {
+  const value = elements.decimalSeparator?.value || 'dot';
+  if (value === 'comma') {
+    return { decimalSeparator: ',', delimiter: ';' };
+  }
+  return { decimalSeparator: '.', delimiter: ',' };
 }
 
 function handleCsvUpload(type, file) {
@@ -685,14 +920,16 @@ function handleCsvUpload(type, file) {
         const parsed = parseBomCsv(event.target.result);
         mergeBomData(parsed);
         setStatus(`Parsed ${parsed.length} BoM rows.`, 'success');
+        renderComponentTable();
+        updateComputeButtonState();
+        hydrateManualTablesFromComponents();
       } else {
         const parsed = parseInputFactorsCsv(event.target.result);
-        mergeInputFactors(parsed);
+        applyFactorCombosFromCsv(parsed);
+        renderComponentTable();
+        updateComputeButtonState();
         setStatus(`Parsed ${parsed.size} input-factor rows.`, 'success');
       }
-      renderComponentTable();
-      updateComputeButtonState();
-      hydrateManualTablesFromComponents();
       switchTab('manual');
     } catch (error) {
       setStatus(error.message || 'Failed to parse CSV.', 'error');
@@ -721,19 +958,43 @@ function mergeBomData(newComponents) {
   });
 }
 
-function mergeInputFactors(factorMap) {
-  factorMap.forEach((factorValues, id) => {
-    const target = state.components.find((comp) => comp.id === id);
-    if (target) {
-      Object.assign(target, factorValues);
-    } else {
-      state.components.push({
-        ...createEmptyComponent(),
-        id,
-        ...factorValues,
-      });
-    }
+function applyFactorCombosFromCsv(factorMap) {
+  if (!factorMap || !factorMap.size) {
+    throw new Error('No input-factor rows were detected in the CSV.');
+  }
+  const factorLookup = new Map();
+  const manualRows = [];
+  factorMap.forEach((combo, key) => {
+    factorLookup.set(key, combo);
+    const manualRow = {
+      material: combo.material || '',
+      process: combo.process || '',
+    };
+    MANUAL_FACTOR_FIELDS.forEach((field) => {
+      manualRow[field] = formatPercentInput(combo[field]);
+    });
+    manualRows.push(manualRow);
   });
+  state.components = state.components.map((comp) => {
+    const key = buildFactorKey(comp.material, comp.process);
+    const combo = key ? factorLookup.get(key) : undefined;
+    if (!combo) {
+      return comp;
+    }
+    const updated = { ...comp };
+    MANUAL_FACTOR_FIELDS.forEach((field) => {
+      if (typeof combo[field] === 'number') {
+        updated[field] = combo[field];
+      }
+    });
+    return updated;
+  });
+  state.manualFactorRows = manualRows;
+  state.manualFactorsReady = manualRows.length > 0;
+  toggleManualFactorsVisibility(state.manualFactorsReady);
+  renderManualFactorTable();
+  state.manualEditorReady = state.manualFactorsReady;
+  toggleManualEditorVisibility(state.manualEditorReady);
 }
 
 function createEmptyComponent() {
@@ -772,7 +1033,6 @@ function handleComputation() {
     const result = computeCircularityIndicators(state.components, state.productParams);
     state.lastComputation = result;
     displayResults(result);
-    updateCharts(result.components);
     setStatus(`Computed PCI = ${result.PCI.toFixed(3)} for ${result.components.length} components.`, 'success');
     if (DEBUG_LOG) {
       console.table(result.debug);
@@ -785,19 +1045,30 @@ function handleComputation() {
 function displayResults(result) {
   elements.resultsSection.classList.remove('hidden');
   elements.productNameDisplay.textContent = state.productParams.productName || '—';
-  elements.useFactor.textContent = result.X.toFixed(3);
-  elements.totalMass.textContent = `${result.M_total.toFixed(3)} kg`;
+  elements.totalMass.textContent = `${formatDecimal(result.M_total)} kg`;
+  const flows = result.productFlows || {};
+  if (elements.totalVirgin) {
+    elements.totalVirgin.textContent = `${formatDecimal(flows.V)} kg`;
+  }
+  if (elements.totalWaste) {
+    elements.totalWaste.textContent = `${formatDecimal(flows.W)} kg`;
+  }
+  updateMeter(elements.useFactorValue, elements.useFactorBar, result.X || 0, 1);
+  updateMeter(elements.lfiValue, elements.lfiBar, result.productLFI ?? computeDerivedLFI(result));
   elements.pciValue.textContent = result.PCI.toFixed(3);
   elements.pciBar.style.width = `${Math.max(0, Math.min(1, result.PCI)) * 100}%`;
-
   const rows = result.components
     .map((component) => {
       const notes = component.warnings?.length ? component.warnings.join(' ') : '';
+      const signature = buildSignature(component);
       return `
         <tr>
+          <td>${escapeHtml(signature)}</td>
           <td>${escapeHtml(component.id)}</td>
           <td>${escapeHtml(component.name)}</td>
           <td>${component.massKg.toFixed(3)}</td>
+          <td>${escapeHtml(component.material || '')}</td>
+          <td>${escapeHtml(component.process || '')}</td>
           <td>${(component.CCI ?? 0).toFixed(3)}</td>
           <td>${(component.CII ?? 0).toFixed(1)}</td>
           <td>${escapeHtml(notes)}</td>
@@ -805,11 +1076,48 @@ function displayResults(result) {
     })
     .join('');
   elements.resultsTableBody.innerHTML = rows;
+  updateCharts({ data: result.components, pci: result.PCI });
 }
 
-function updateCharts(components) {
-  state.charts.cci = renderCciChart(elements.cciChartCanvas, components, state.charts.cci);
-  state.charts.cii = renderCiiChart(elements.ciiChartCanvas, components, state.charts.cii);
+function updateMeter(valueEl, barEl, value, max = 1) {
+  if (valueEl) {
+    valueEl.textContent = Number.isFinite(value) ? value.toFixed(3) : '–';
+  }
+  if (barEl) {
+    const clamped = max > 0 ? Math.min(Math.max(value / max, 0), 1) : 0;
+    barEl.style.width = `${clamped * 100}%`;
+  }
+}
+
+function computeDerivedLFI(result) {
+  if (!result) {
+    return 0;
+  }
+  const X = result.X ?? 0;
+  const PCI = result.PCI ?? 0;
+  if (!isFinite(X) || X <= 0) {
+    return 0;
+  }
+  return Math.max(0, (1 - PCI) * X);
+}
+
+function buildSignature(component) {
+  const id = component.id || '—';
+  const name = component.name || 'n/a';
+  const material = component.material || 'n/a';
+  const process = component.process || 'n/a';
+  return `${id} – ${name} – ${material} – ${process}`;
+}
+
+function updateCharts(componentsMeta) {
+  const data = Array.isArray(componentsMeta?.data) ? componentsMeta.data : state.lastComputation?.components || [];
+  const pciValue = componentsMeta?.pci ?? state.lastComputation?.PCI ?? null;
+  const baseCci = data.slice();
+  const baseCii = data.slice();
+  const cciComponents = state.sortDescending.cci ? [...baseCci].sort((a, b) => (b.CCI ?? 0) - (a.CCI ?? 0)) : baseCci;
+  const ciiComponents = state.sortDescending.cii ? [...baseCii].sort((a, b) => (b.CII ?? 0) - (a.CII ?? 0)) : baseCii;
+  state.charts.cci = renderCciChart(elements.cciChartCanvas, cciComponents, state.charts.cci, pciValue);
+  state.charts.cii = renderCiiChart(elements.ciiChartCanvas, ciiComponents, state.charts.cii);
 }
 
 function validateComponents() {

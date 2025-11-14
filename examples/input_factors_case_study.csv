@@ -1,0 +1,10 @@
+material,process,Fr_percent,Efp_percent,Ecp_percent,Cfp_percent,Ccp_percent,Ems_percent,Erfp_percent
+Polyamide,Injection-molding,0,100,95,0,100,30,30
+Stainless steel,Cold-forming,38,74,87,43.4,99,70.8,70.8
+Stainless steel,Punching & bending,38,74,70,43.4,99,70.8,70.8
+Brass,Subtractive,35.5,95.5,78,44,100,83.7,83.7
+Aluminum,Die-casting,52.6,70.5,78,95,96.8,83.7,83.7
+Copper,Wire-drawing,35.5,95.5,78,0,100,83.7,83.7
+Iron,Subtractive,30,99,50,55,100,72.1,72.1
+Cardboard,Pressing & drying,81.2,87.5,90,0,80,84.5,84.5
+PCB,Electronics assembly,0,100,66.7,0,0,0,0

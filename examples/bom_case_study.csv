@@ -1,0 +1,10 @@
+component_id,component_name,material,process,mass_kg
+C1,Polyamide Housing,Polyamide,Injection-molding,0.172
+C2,Stainless Steel Lever,Stainless steel,Cold-forming,0.011
+C3,Mounting Bracket,Stainless steel,Punching & bending,0.030
+C4,Brass Spacer,Brass,Subtractive,0.010
+C5,Aluminum Body,Aluminum,Die-casting,0.025
+C6,Copper Coil,Copper,Wire-drawing,0.025
+C7,Iron Core,Iron,Subtractive,0.025
+C8,Cardboard Packaging,Cardboard,Pressing & drying,0.050
+C9,PCB Assembly,PCB,Electronics assembly,0.020

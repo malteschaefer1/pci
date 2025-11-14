@@ -1,3 +1,8 @@
+/*
+ * Global styles for the PCI Circularity Calculator.
+ * Provides layout, typography, and component styling used by the single-page app.
+ */
+
 :root {
   --bg: #f6f7fb;
   --card-bg: #ffffff;
@@ -39,6 +44,21 @@ body {
   margin: 0.5rem 0 0;
 }
 
+.page-header .subtitle {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 0.4rem;
+}
+
+.page-header .disclaimer {
+  font-size: 0.95rem;
+  margin-top: 0.6rem;
+  background: rgba(255, 255, 255, 0.12);
+  padding: 0.35rem 0.65rem;
+  border-radius: 8px;
+  display: inline-block;
+}
+
 .page-header .eyebrow {
   text-transform: uppercase;
   letter-spacing: 0.2em;
@@ -72,12 +92,19 @@ main {
   box-shadow: 0 20px 60px rgba(15, 23, 42, 0.05);
 }
 
+.section-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
 .section-header h2 {
   margin: 0;
 }
 
 .section-header p {
-  margin-top: 0.25rem;
+  margin: 0;
   color: var(--muted);
 }
 
@@ -164,6 +191,14 @@ main {
   justify-content: flex-end;
 }
 
+.manual-placeholder {
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  padding: 1rem;
+  color: var(--muted);
+  text-align: center;
+}
+
 .manual-editor {
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -190,6 +225,18 @@ main {
 .chart-grid {
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 2rem;
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.chart-header h3 {
+  margin: 0;
 }
 
 label {
@@ -411,6 +458,13 @@ tr.row-error {
   margin-top: 0.5rem;
 }
 
+.export-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
 .calculate-row {
   display: flex;
   gap: 1rem;
@@ -440,6 +494,49 @@ tr.row-error {
 .pci-summary .value {
   font-size: 1.2rem;
   margin: 0.35rem 0 0;
+}
+
+.subvalue {
+  margin: 0.15rem 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.metric-meter {
+  background: #f8f9ff;
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  box-shadow: inset 0 0 0 1px rgba(60, 125, 255, 0.05);
+}
+
+.metric-meter__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.95rem;
+  margin-bottom: 0.35rem;
+}
+
+.metric-meter__bar {
+  height: 10px;
+  background: #edf0f7;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.metric-meter__bar > div {
+  height: 100%;
+  background: linear-gradient(90deg, #60a5fa, #2563eb);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+  width: 0%;
 }
 
 .pci-meter {
@@ -474,6 +571,7 @@ tr.row-error {
 
 .chart-grid canvas {
   width: 100%;
+  display: block;
 }
 
 .page-footer {
@@ -500,4 +598,10 @@ tr.row-error {
   table td {
     font-size: 0.8rem;
   }
+}
+.section-header button {
+  align-self: flex-start;
+}
+.section-header h2 + button {
+  align-self: flex-start;
 }
