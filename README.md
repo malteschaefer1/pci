@@ -100,12 +100,12 @@ C1,0,100,95,0,100,30,30
 - **PCI (Eq. 3 & 5)**: mass-weighted average of component CCIs plus the use-factor adjustment `PCI = 1 - (LFI / X)`. Negative PCI values are clamped to 0 as suggested in Appendix A.
 - **CCI (Eq. 6)**: per-component version of PCI using the same `X`.
 - **CII (Eq. 4)**: `CIIᵢ = 100 × (PCI / CCIᵢ) / Σ(PCI / CCIⱼ)`. When a CCI approaches zero the UI reports a warning and sets CII to zero to avoid divide-by-zero artifacts.
-- **Linear Flow Index (Eq. 7)**: implemented exactly with helper functions for:
-  - Virgin feedstock mass \(V\) (Eq. 9)
-  - Waste mass terms \(W_{fp}, W_{cp}, W_u, W_{ms}, W_{rfp}\) (Eq. 10–15)
-  - Recycling flows \(R_{in}, R_{out}\) incl. \(R_{fp}, R_{cp}, R_{EoL}\) (Eq. 16–21)
-  - Reused component mass \(C\) (Eq. 22)
-  - Linear reference flows \(V_{linear}, W_{linear}\) (Eq. 23)
+- **Linear Flow Index (Eq. 7)**: implemented with helper functions for:
+  - Virgin feedstock mass `V` (Eq. 9)
+  - Waste mass terms `W_fp`, `W_cp`, `W_u`, `W_ms`, `W_rfp` (Eq. 10–15)
+  - Recycling flows `R_in`, `R_out` including `R_fp`, `R_cp`, `R_EoL` (Eq. 16–21)
+  - Reused component mass `C` (Eq. 22)
+  - Linear reference flows `V_linear`, `W_linear` (Eq. 23)
 - **Debugging**: set `DEBUG_LOG` in `assets/js/app.js` to `true` to print intermediate flows (V, W, Rin/Rout, LFI) to the console for each component.
 
 Variable naming aligns with the paper: `Fu`, `Cu`, `Cr`, `Fr`, `Efp`, `Ecp`, `Cfp`, `Ccp`, `Ems`, `Erfp`, `M`, and so on.
