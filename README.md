@@ -4,7 +4,7 @@
 
 This browser-only tool reproduces the Product Circularity Indicator (PCI), Component Circularity Indicator (CCI), and Circularity Impact Indicator (CII) workflow from **PCI_paper_V2.pdf** (Sections 3–4 + Appendix A). Open `index.html` and you can enter, import, visualize, and export results without installing anything.
 
-![Workflow overview](examples/workflow_overview.png "Optional diagram – replace with your own if desired")
+![Workflow overview](examples/flowchart_generic.png "Optional diagram – replace with your own if desired")
 
 ## Background
 
