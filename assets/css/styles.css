@@ -109,6 +109,9 @@ main {
 }
 
 .status-panel {
+  position: sticky;
+  top: 0;
+  z-index: 100;
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -118,6 +121,7 @@ main {
   background: var(--card-bg);
   border: 1px solid transparent;
   font-size: 0.95rem;
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.08);
 }
 
 .status-panel__title {

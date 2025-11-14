@@ -930,7 +930,6 @@ function handleCsvUpload(type, file) {
         updateComputeButtonState();
         setStatus(`Parsed ${parsed.size} input-factor rows.`, 'success');
       }
-      switchTab('manual');
     } catch (error) {
       setStatus(error.message || 'Failed to parse CSV.', 'error');
     }

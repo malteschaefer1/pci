@@ -70,7 +70,7 @@ The interface is fully client-side, so no data leaves your machine.
 
 ## Workflow walkthrough
 
-1. **Step 1 – Product parameters**: enter `Fu`, `Cu`, `Cr`, and the lifetime/use intensity pairs (`L`, `Ld`, `I`, `Id`). These drive the use factor \(X = \frac{I \cdot L}{Id \cdot Ld}\) (Eq. 8).
+1. **Step 1 – Product parameters**: enter `Fu`, `Cu`, `Cr`, and the lifetime/use-intensity pairs (`L`, `Ld`, `I`, `Id`). These drive the use factor `X = (I · L) / (Id · Ld)` (Eq. 8).
 2. **Step 2 – BoM & input factors**: either download the CSV templates or work directly in the Manual table. Columns map to the component inputs defined in Section 3.2. Prefer CSV mode? Use the templates or upload the case-study files from `/examples` (`bom_case_study.csv`, `input_factors_case_study.csv`) to reproduce the paper’s dataset.
 3. **Step 3 – Calculation**: validates the grid and runs all equations from Appendix A, exposing per-component warnings (e.g., when CCI gets clamped to zero).
 4. **Step 4 – Visualizations**: displays two bar charts (CCI and CII by component) using Chart.js.
@@ -97,9 +97,9 @@ C1,0,100,95,0,100,30,30
 
 ## Calculation details
 
-- **PCI (Eq. 3 & 5)**: mass-weighted average of component CCIs plus the use-factor adjustment \(PCI = 1 - \frac{LFI}{X}\). Negative PCI values are clamped to 0 as suggested in Appendix A.
-- **CCI (Eq. 6)**: per-component version of PCI using the same \(X\).
-- **CII (Eq. 4)**: \( CII_i = 100 \cdot \frac{PCI/CCI_i}{\sum_j PCI/CCI_j} \). When a CCI approaches zero the UI reports a warning and sets CII to zero to avoid divide-by-zero artifacts.
+- **PCI (Eq. 3 & 5)**: mass-weighted average of component CCIs plus the use-factor adjustment `PCI = 1 - (LFI / X)`. Negative PCI values are clamped to 0 as suggested in Appendix A.
+- **CCI (Eq. 6)**: per-component version of PCI using the same `X`.
+- **CII (Eq. 4)**: `CIIᵢ = 100 × (PCI / CCIᵢ) / Σ(PCI / CCIⱼ)`. When a CCI approaches zero the UI reports a warning and sets CII to zero to avoid divide-by-zero artifacts.
 - **Linear Flow Index (Eq. 7)**: implemented exactly with helper functions for:
   - Virgin feedstock mass \(V\) (Eq. 9)
   - Waste mass terms \(W_{fp}, W_{cp}, W_u, W_{ms}, W_{rfp}\) (Eq. 10–15)
