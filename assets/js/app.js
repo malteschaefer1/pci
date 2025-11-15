@@ -17,7 +17,7 @@ const {
   exportComponentsToInputFactorsCsv,
   exportResultsCsv,
 } = CsvUtils;
-const { renderCciChart, renderCiiChart } = ChartHelpers;
+const { renderCciChart, renderCiiChart, renderCompositionChart } = ChartHelpers;
 
 const DEBUG_LOG = false;
 
@@ -95,6 +95,7 @@ const state = {
   charts: {
     cci: null,
     cii: null,
+    composition: null,
   },
   lastComputation: null,
   manualBomRows: [],
@@ -105,6 +106,7 @@ const state = {
     cci: false,
     cii: false,
   },
+  sortComposition: 'default',
 };
 
 const elements = {};
@@ -148,6 +150,10 @@ function cacheElements() {
   elements.resultsTableBody = document.getElementById('results-table-body');
   elements.cciChartCanvas = document.getElementById('cci-chart');
   elements.ciiChartCanvas = document.getElementById('cii-chart');
+  elements.compositionChartCanvas = document.getElementById('composition-chart');
+  elements.sortCompositionMassBtn = document.getElementById('sort-composition-mass');
+  elements.sortCompositionCiiBtn = document.getElementById('sort-composition-cii');
+  elements.sortCompositionResetBtn = document.getElementById('sort-composition-reset');
   elements.bomUpload = document.getElementById('bom-upload');
   elements.factorsUpload = document.getElementById('factors-upload');
   elements.manualBomBody = document.getElementById('manual-bom-body');
@@ -256,6 +262,9 @@ function bindEvents() {
   elements.factorsCompleteBtn?.addEventListener('click', handleFactorsComplete);
   elements.sortCciBtn?.addEventListener('click', () => toggleChartSorting('cci'));
   elements.sortCiiBtn?.addEventListener('click', () => toggleChartSorting('cii'));
+  elements.sortCompositionMassBtn?.addEventListener('click', () => handleCompositionSort('mass'));
+  elements.sortCompositionCiiBtn?.addEventListener('click', () => handleCompositionSort('cii'));
+  elements.sortCompositionResetBtn?.addEventListener('click', () => handleCompositionSort('default'));
 }
 
 function switchTab(name) {
@@ -430,6 +439,27 @@ function updateSortButtons() {
   if (elements.sortCiiBtn) {
     elements.sortCiiBtn.textContent = state.sortDescending.cii ? 'Reset order' : 'Sort high \u2192 low';
   }
+  elements.sortCompositionMassBtn?.classList.toggle('is-active', state.sortComposition === 'mass');
+  elements.sortCompositionCiiBtn?.classList.toggle('is-active', state.sortComposition === 'cii');
+  if (elements.sortCompositionResetBtn) {
+    elements.sortCompositionResetBtn.disabled = state.sortComposition === 'default';
+  }
+}
+
+function handleCompositionSort(mode) {
+  if (!state.lastComputation) {
+    setStatus('Run a calculation before sorting charts.', 'error');
+    return;
+  }
+  if (state.sortComposition === mode) {
+    return;
+  }
+  state.sortComposition = mode;
+  updateSortButtons();
+  updateCharts({
+    data: state.lastComputation.components,
+    pci: state.lastComputation.PCI,
+  });
 }
 
 function updateBomSuggestions() {
@@ -1117,6 +1147,24 @@ function updateCharts(componentsMeta) {
   const ciiComponents = state.sortDescending.cii ? [...baseCii].sort((a, b) => (b.CII ?? 0) - (a.CII ?? 0)) : baseCii;
   state.charts.cci = renderCciChart(elements.cciChartCanvas, cciComponents, state.charts.cci, pciValue);
   state.charts.cii = renderCiiChart(elements.ciiChartCanvas, ciiComponents, state.charts.cii);
+  state.charts.composition = renderCompositionChart(
+    elements.compositionChartCanvas,
+    getCompositionOrder(data),
+    state.charts.composition
+  );
+}
+
+function getCompositionOrder(source) {
+  if (!Array.isArray(source)) {
+    return [];
+  }
+  if (state.sortComposition === 'mass') {
+    return [...source].sort((a, b) => (b.massKg ?? 0) - (a.massKg ?? 0));
+  }
+  if (state.sortComposition === 'cii') {
+    return [...source].sort((a, b) => (b.CII ?? 0) - (a.CII ?? 0));
+  }
+  return source.slice();
 }
 
 function validateComponents() {

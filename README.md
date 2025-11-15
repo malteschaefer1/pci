@@ -4,9 +4,11 @@
 
 This browser-only tool reproduces the Product Circularity Indicator (PCI), Component Circularity Indicator (CCI), and Circularity Impact Indicator (CII) workflow from **PCI_paper_V2.pdf** (Sections 3–4 + Appendix A). Open `index.html` and you can enter, import, visualize, and export results without installing anything.
 
+[View source on GitHub](https://github.com/malteschaefer1/pci).
+
 <figure style="background:#fff;padding:12px;border:1px solid #e0e0e0;border-radius:6px;">
-  <img src="examples/flowchart_generic.png" alt="Workflow overview" style="display:block;margin:0 auto;background:#fff;">
-  <figcaption style="text-align:center;margin-top:8px;font-style:italic;">Figure: Generic flowchart showcasing the PCI variables.</figcaption>
+  <img src="examples/flowchart_generic.png" alt="Workflow overview" style="display:block;margin:0 auto;background:#fff;max-width:100%;height:auto;">
+  <figcaption style="text-align:center;margin-top:8px;font-style:italic;">Generic flowchart showcasing the PCI variables, flows, and system boundary (adapted from <a href="https://doi.org/10.1016/j.resconrec.2019.104608" target="_blank" rel="noopener">Braquené et al.</a> - click to enlarge).</figcaption>
 </figure>
 
 ## Background
@@ -132,7 +134,8 @@ Variable naming aligns with the paper: `Fu`, `Cu`, `Cr`, `Fr`, `Efp`, `Ecp`, `Cf
 - **Extending the UI**: Add tabs/sections in `index.html`, style via `styles.css`, and wire new controls in `app.js`.
 - **Adding metrics**: expand `circularity.js` with additional pure functions and import them into `app.js`. Keep new math functions pure and well-commented.
 - **Debugging**: toggle `DEBUG_LOG` in `app.js` or inspect the `debug` object returned by `computeCircularityIndicators`.
+- **README viewer**: after editing this Markdown file, run `python3 scripts/build-readme.py` to refresh the offline viewer (`README.html` / `assets/js/readme-data.js`).
 
 ## License
 
-The project is released under the MIT License (see `LICENSE`). All methodology details remain credited to the authors of PCI_paper_V2.pdf.
+The project is released under the <a href="LICENSE" target="_blank" rel="noopener">MIT License</a>. All methodology details remain credited to the authors of the <a href="PCI_paper_V2.pdf" target="_blank" rel="noopener">PCI methodology paper</a>.

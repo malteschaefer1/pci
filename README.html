@@ -60,13 +60,23 @@
       </article>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="assets/js/readme-data.js"></script>
     <script>
-      // Fetch the Markdown README and render it into this page.
+      // Render the Markdown README, preferring the offline-embedded copy.
       document.addEventListener("DOMContentLoaded", () => {
         const container = document.getElementById("readme-content");
         const renderMarkdown = (markdown) => {
           container.innerHTML = marked.parse(markdown, { mangle: false, headerIds: false });
         };
+        if (window.__PCI_README__) {
+          renderMarkdown(window.__PCI_README__);
+          return;
+        }
+        if (window.location.protocol === "file:") {
+          container.innerHTML =
+            '<p style="color:#c0392b;">Offline README not embedded. Run <code>python3 scripts/build-readme.py</code> and reload.</p>';
+          return;
+        }
         fetch("README.md")
           .then((response) => {
             if (!response.ok) throw new Error("Failed to fetch README.md");

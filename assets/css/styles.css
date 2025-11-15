@@ -231,6 +231,10 @@ main {
   gap: 2rem;
 }
 
+.chart-wide {
+  margin-top: 2rem;
+}
+
 .chart-header {
   display: flex;
   justify-content: space-between;
@@ -241,6 +245,29 @@ main {
 
 .chart-header h3 {
   margin: 0;
+}
+
+.chart-header__actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.chart-header__actions button {
+  white-space: nowrap;
+}
+
+.chart-grid canvas,
+.chart-wide canvas {
+  width: 100%;
+  display: block;
+}
+
+.secondary.is-active {
+  border-color: #2563eb;
+  color: #2563eb;
+  background: #eef2ff;
 }
 
 label {

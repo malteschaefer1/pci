@@ -38,6 +38,8 @@
           <a href="PCI_paper_V2.pdf" target="_blank" rel="noopener">Open PCI methodology (PDF)</a>
           <span aria-hidden="true">•</span>
           <a href="README.html" target="_blank" rel="noopener">Open project README file</a>
+          <span aria-hidden="true">•</span>
+          <a href="https://github.com/malteschaefer1/pci" target="_blank" rel="noopener">View source on GitHub</a>
         </div>
       </div>
     </header>
@@ -65,7 +67,7 @@
             />
           </a>
           <figcaption style="margin-top:0.5rem;color:#555;font-style:italic;">
-            Generic flowchart showcasing the PCI variables, flows, and system boundary (click to enlarge).
+            Generic flowchart showcasing the PCI variables, flows, and system boundary (adapted from <a href="https://doi.org/10.1016/j.resconrec.2019.104608" target="_blank" rel="noopener">Braquené et al.</a> - click to enlarge).
           </figcaption>
         </figure>
         <p>
@@ -577,7 +579,7 @@
       <section id="visualizations" class="card">
         <div class="section-header">
           <h2>Step 4 – Visualize the results</h2>
-          <p>Columns reflect the Component Circularity Indicator (CCI, left) and Circularity Impact Indicator (CII, right). The CCI reflects the degree of circularity of each component, and the CII the contribution of each component to the overall product circularity (PCI). Charts refresh every time you recompute.</p>
+          <p>Columns reflect the Component Circularity Indicator (CCI, left) and Circularity Impact Indicator (CII, right). The CCI reflects the degree of circularity of each component, and the CII the contribution of each component to the overall product circularity (PCI). Charts refresh every time you recompute, and the stacked chart below compares how each component contributes to mass and CII shares.</p>
         </div>
         <div class="grid two-col chart-grid">
           <div>
@@ -594,6 +596,17 @@
             </div>
             <canvas id="cii-chart" height="200"></canvas>
           </div>
+        </div>
+        <div class="chart-wide">
+          <div class="chart-header">
+            <h3>Relative mass and CII share of each component</h3>
+            <div class="chart-header__actions">
+              <button type="button" id="sort-composition-mass" class="secondary">Sort by mass share (high → low)</button>
+              <button type="button" id="sort-composition-cii" class="secondary">Sort by CII share (high → low)</button>
+              <button type="button" id="sort-composition-reset" class="secondary">Reset order</button>
+            </div>
+          </div>
+          <canvas id="composition-chart" height="260"></canvas>
         </div>
       </section>
 
